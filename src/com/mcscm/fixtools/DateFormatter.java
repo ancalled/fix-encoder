@@ -1,4 +1,4 @@
-package com.mcscm.fixtools.gen;
+package com.mcscm.fixtools;
 
 import java.text.DateFormat;
 import java.text.DateFormatSymbols;

@@ -1,4 +1,4 @@
-package com.mcscm.fixtools;
+package com.mcscm.fixtools.generator;
 
 public enum Type {
     STRING("String", "java.lang.String", "null"),

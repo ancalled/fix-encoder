@@ -1,4 +1,4 @@
-package com.mcscm.fixtools;
+package com.mcscm.fixtools.generator;
 
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;

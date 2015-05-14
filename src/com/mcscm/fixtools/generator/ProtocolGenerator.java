@@ -1,4 +1,4 @@
-package com.mcscm.fixtools;
+package com.mcscm.fixtools.generator;
 
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -8,6 +8,9 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,15 +21,21 @@ public class ProtocolGenerator {
     private final XmlParser parser;
     private final Map<String, FieldType> fieldTypes = new HashMap<>();
     private final String javaPackage;
+    private final Path outDir;
     private final String fieldSep;
 
     public ProtocolGenerator(String xmlIn) throws IOException, SAXException, ParserConfigurationException {
         parser = new XmlParser(xmlIn);
         javaPackage = System.getProperty("package", "org.sample");
         fieldSep = System.getProperty("package", DEFAULT_FIELD_SEP);
+        final String userDir = System.getProperty("user.dir");
+        final String outHome = System.getProperty("out.home", userDir + "/gen-src");
+        outDir = Paths.get(outHome, javaPackage.replace(".", "/"));
+        Files.createDirectories(outDir);
+
     }
 
-    public void generate() throws XPathException {
+    public void generate() throws XPathException, IOException {
         NodeList nodes = (NodeList) parser.eval("/fix/fields/field");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element node = (Element) nodes.item(i);
@@ -43,7 +52,10 @@ public class ProtocolGenerator {
             Element node = (Element) nodes.item(i);
             if (node == null) continue;
 
-            System.out.println(generateMessage(node));
+            String fname = node.getAttribute("name") + ".java";
+
+            String body = generateMessage(node);
+            Files.write(outDir.resolve(fname), body.getBytes());
         }
 
     }
@@ -80,6 +92,9 @@ public class ProtocolGenerator {
                 sb.append("import ").append(type.javaFullType).append(";\n");
             }
         }
+
+        sb.append("import com.mcscm.fixtools.FIXMessage;\n");
+        sb.append("import com.mcscm.fixtools.DateFormatter;\n");
         sb.append("\n");
     }
 
@@ -246,8 +261,8 @@ public class ProtocolGenerator {
     }
 
 
-    public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException, XPathException {
-        ProtocolGenerator generator = new ProtocolGenerator("./etc/FIX_test.xml");
+    public static void main(String[] args) throws Exception {
+        ProtocolGenerator generator = new ProtocolGenerator("./data/FIX_test.xml");
         generator.generate();
     }
 }

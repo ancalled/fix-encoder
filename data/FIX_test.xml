@@ -18,6 +18,17 @@
             <field name="CumQty" required="Y"/>
             <field name="TransactTime" required="N"/>
         </message>
+
+        <!--<message name="MarketDataIncrementalRefresh" msgtype="X" msgcat="app">-->
+            <!--<field name="MDReqID" required="N"/>-->
+            <!--<component name="MDIncGrp" required="Y"/>-->
+            <!--<field name="ApplQueueDepth" required="N"/>-->
+            <!--<field name="ApplQueueResolution" required="N"/>-->
+            <!--<field name="MDBookType" required="N"/>-->
+            <!--<field name="MDFeedType" required="N"/>-->
+            <!--<field name="TradeDate" required="N"/>-->
+            <!--<component name="RoutingGrp" required="N"/>-->
+        <!--</message>-->
     </messages>
     <components>
         <component name="Instrument">
@@ -71,5 +82,14 @@
             <value enum="2" description="EXCHANGE_CLOSED"/>
         </field>
         <field number="151" name="LeavesQty" type="QTY"/>
+
+        <field number="262" name="MDReqID" type="STRING"/>
+        <field number="813" name="ApplQueueDepth" type="INT"/>
+        <field number="814" name="ApplQueueResolution" type="INT">
+            <value enum="0" description="NO_ACTION_TAKEN"/>
+            <value enum="1" description="QUEUE_FLUSHED"/>
+            <value enum="2" description="OVERLAY_LAST"/>
+            <value enum="3" description="END_SESSION"/>
+        </field>
     </fields>
 </fix>
