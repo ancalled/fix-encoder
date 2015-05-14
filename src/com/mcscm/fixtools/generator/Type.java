@@ -6,7 +6,10 @@ public enum Type {
     PRICE("double", null, "0.0"),
     QTY("long", null, "0"),
     INT("int", null, "0"),
-    UTCTIMESTAMP("Date", "java.util.Date", "null");
+    UTCTIMESTAMP("Date", "java.util.Date", "null"),
+    LOCALMKTDATE("Date", "java.util.Date", "null"),
+    NUMINGROUP("List", "java.util.List", "null")
+    ;
 
     public String javaType;
     public String javaFullType;

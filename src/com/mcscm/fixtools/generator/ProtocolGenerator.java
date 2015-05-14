@@ -13,6 +13,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class ProtocolGenerator {
 
@@ -35,8 +37,8 @@ public class ProtocolGenerator {
 
     }
 
-    public void generate() throws XPathException, IOException {
-        NodeList nodes = (NodeList) parser.eval("/fix/fields/field");
+    public void generate() throws IOException {
+        NodeList nodes = eval("/fix/fields/field");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element node = (Element) nodes.item(i);
             if (node == null) continue;
@@ -47,39 +49,48 @@ public class ProtocolGenerator {
             fieldTypes.put(name, new FieldType(num, name, type));
         }
 
-        nodes = (NodeList) parser.eval("/fix/messages/message");
+        nodes = eval("/fix/messages/message");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element node = (Element) nodes.item(i);
             if (node == null) continue;
 
             String fname = node.getAttribute("name") + ".java";
 
-            String body = generateMessage(node);
+            String body = generateMessage(node, false, 0);
             Files.write(outDir.resolve(fname), body.getBytes());
         }
 
     }
 
-    private String generateMessage(Element node) {
+    private String generateMessage(Element node, boolean inner, int level) {
         String name = node.getAttribute("name");
 
         StringBuilder sb = new StringBuilder();
+        String tab = tab(level);
+        String tab2 = tab + "\t";
 
-        generatePackage(sb);
-        generateImports(sb);
+        if (!inner) {
+            generatePackage(sb);
+            sb.append("//Generated source\n");
 
-        sb.append("public class ").append(name).append(" implements FIXMessage {\n");
-        sb.append("\n");
+            generateImports(sb);
 
-        generateFields(sb, node);
+            sb.append("public class ").append(name).append(" implements FIXMessage {\n\n");
+        } else {
+            sb.append(tab).append("public static class ").append(name).append(" {\n\n");
+        }
 
-        generateInterfaceImpl(sb, node);
+        forEach(node, 0, (f, i) -> f.appendDefine(sb, tab2));
 
-        sb.append("}\n");
+        generateInterfaceImpl(sb, node, tab2);
+
+        generateSubClasess(sb, node, level);
+        sb.append(tab).append("}\n");
 
 
         return sb.toString();
     }
+
 
 
     private void generatePackage(StringBuilder sb) {
@@ -98,46 +109,39 @@ public class ProtocolGenerator {
         sb.append("\n");
     }
 
-    private void generateFields(StringBuilder sb, Element node) {
-        forEach(node, 0, (f, i) -> f.appendDefine(sb));
-    }
 
-    private void generateInterfaceImpl(StringBuilder sb, Element el) {
+    private void generateInterfaceImpl(StringBuilder sb, Element el, String tab) {
         String msgtype = el.getAttribute("msgtype");
 
-        sb.append("\n");
-        sb.append("\tpublic String getType() {\n").append("\t\treturn \"")
-                .append(msgtype).append("\";\n").append("\t}\n");
-        sb.append("\n");
-
+        String tab2 = tab + "\t";
 
         sb.append("\n");
-        sb.append("\tpublic String encode() {\n");
-        sb.append("\t\tfinal StringBuilder sb = new StringBuilder();\n");
-        sb.append("\n\t\t//todo: append headers\n\n");
+        sb.append(tab).append("public String getType() {\n").append(tab2).append("return \"")
+                .append(msgtype).append("\";\n").append(tab).append("}\n");
 
-        generateEncode(sb, el);
+        sb.append("\n");
+        sb.append(tab).append("public String encode() {\n");
+        sb.append(tab2).append("final StringBuilder sb = new StringBuilder();\n");
 
-        sb.append("\t\t//todo: append tails\n");
+        generateEncode(sb, el, tab2);
 
-        sb.append("\n\t\treturn sb.toString();\n\n");
-        sb.append("\t}\n");
+        sb.append("\n").append(tab2).append("return sb.toString();\n");
+        sb.append(tab).append("}\n");
         sb.append("\n");
 
         //-------------
 
         sb.append("\n");
-        sb.append("\tpublic void decode(String fixmes) {\n");
+        sb.append(tab).append("public void decode(String fixmes) {\n");
 
-        generateDecode(sb, el, "\t\t");
+        generateDecode(sb, el, tab2);
 
-
-        sb.append("\t}\n");
+        sb.append(tab).append("}\n");
         sb.append("\n");
     }
 
-    private void generateEncode(StringBuilder sb, Element node) {
-        forEach(node, 0, (f, i) -> f.appendEncode(sb, "\t\t", fieldSep));
+    private void generateEncode(StringBuilder sb, Element node, String tab) {
+        forEach(node, 0, (f, i) -> f.appendEncode(sb, tab, fieldSep));
     }
 
     private void generateDecode(StringBuilder sb, Element node, String tab) {
@@ -169,44 +173,83 @@ public class ProtocolGenerator {
         sb.append(tab).append("}\n");
     }
 
-
-    // ---------------------------------------------------------------
-
-    private void forEach(Element node, int idx, Consumer func) {
+    private void generateSubClasess(StringBuilder sb, Element node, int level) {
         for (int i = 0; i < node.getChildNodes().getLength(); i++) {
             final Node item = node.getChildNodes().item(i);
             if (item == null || !(item instanceof Element)) continue;
-            Element el = (Element) item;
-            String elName = el.getNodeName();
+
+            final Element el = (Element) item;
+            final String elName = el.getNodeName();
+
+            if ("group".equals(elName)) {
+                String body = generateMessage(el, true, level + 1);
+                sb.append(body);
+                sb.append("\n");
+
+            } else if ("component".equals(elName)) {
+                final String compName = el.getAttribute("name");
+                final NodeList childNodes = eval("/fix/components/component[@name='" + compName + "']");
+
+                for (int j = 0; j < childNodes.getLength(); j++) {
+                    final Node childItem = childNodes.item(j);
+                    if (childItem == null || !(childItem instanceof Element)) continue;
+                    generateSubClasess(sb, (Element) childItem, level);
+                }
+            }
+        }
+    }
+
+
+    // ---------------------------------------------------------------
+
+    private void forEach(Element node, int idx, Consumer<FieldType> func) {
+        for (int i = 0; i < node.getChildNodes().getLength(); i++) {
+            final Node item = node.getChildNodes().item(i);
+            if (item == null || !(item instanceof Element)) continue;
+
+            final Element el = (Element) item;
+            final String elName = el.getNodeName();
 
             if ("field".equals(elName)) {
-                String fieldName = el.getAttribute("name");
-//                String required = el.getAttribute("required");
-                FieldType field = fieldTypes.get(fieldName);
+                final String fieldName = el.getAttribute("name");
+                final FieldType field = fieldTypes.get(fieldName);
                 if (field == null) {
-                    throw new IllegalStateException("Could not find field: " + fieldName);
+                    throw new GeneratorException("Could not find field: " + fieldName);
                 }
 
                 func.accept(field, idx++);
 
             } else if ("component".equals(elName)) {
-                String compName = el.getAttribute("name");
-                NodeList childNodes;
-                try {
-                    childNodes = (NodeList) parser.eval("/fix/components/component[@name='" + compName + "']");
-                } catch (XPathException e) {
-                    e.printStackTrace();
-                    continue;
-                }
+                final String compName = el.getAttribute("name");
+                final NodeList childNodes = eval("/fix/components/component[@name='" + compName + "']");
 
                 for (int j = 0; j < childNodes.getLength(); j++) {
                     final Node childItem = childNodes.item(j);
                     if (childItem == null || !(childItem instanceof Element)) continue;
                     forEach((Element) childItem, idx, func);
                 }
+            } else if ("group".equals(elName)) {
+                final String fieldName = el.getAttribute("name");
+                final FieldType field = fieldTypes.get(fieldName);
+                if (field == null) {
+                    throw new GeneratorException("Could not find field: " + fieldName);
+                }
 
+                func.accept(field, idx++);
             }
         }
+    }
+
+    private NodeList eval(String expr) {
+        try {
+            return (NodeList) parser.eval(expr);
+        } catch (XPathException e) {
+            throw new GeneratorException(e);
+        }
+    }
+
+    public static String tab(int level) {
+        return IntStream.range(0, level).mapToObj(i -> "\t").collect(Collectors.joining());
     }
 
 
@@ -227,8 +270,8 @@ public class ProtocolGenerator {
             }
         }
 
-        public void appendDefine(StringBuilder sb) {
-            sb.append("\tpublic ").append(type.javaType).append(" ").append(fieldName).append(";\n");
+        public void appendDefine(StringBuilder sb, String tab) {
+            sb.append(tab).append("public ").append(type.javaType).append(" ").append(fieldName).append(";\n");
         }
 
         public void appendEncode(StringBuilder sb, String tab, String sep) {
@@ -255,9 +298,9 @@ public class ProtocolGenerator {
 
 
     @FunctionalInterface
-    public interface Consumer {
+    public interface Consumer<T> {
 
-        void accept(FieldType ft, int idx);
+        void accept(T t, int idx);
     }
 
 
