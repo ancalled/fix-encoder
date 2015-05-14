@@ -1,5 +1,6 @@
 package com.mcscm.fixtools.generator;
 
+import org.atteo.evo.inflector.English;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -34,7 +35,6 @@ public class ProtocolGenerator {
         final String outHome = System.getProperty("out.home", userDir + "/gen-src");
         outDir = Paths.get(outHome, javaPackage.replace(".", "/"));
         Files.createDirectories(outDir);
-
     }
 
     public void generate() throws IOException {
@@ -56,37 +56,38 @@ public class ProtocolGenerator {
 
             String fname = node.getAttribute("name") + ".java";
 
-            String body = generateMessage(node, false, 0);
+            String body = generateClass(node, false, 0);
             Files.write(outDir.resolve(fname), body.getBytes());
         }
 
     }
 
-    private String generateMessage(Element node, boolean inner, int level) {
-        String name = node.getAttribute("name");
+    private String generateClass(Element node, boolean inner, int level) {
 
         StringBuilder sb = new StringBuilder();
         String tab = tab(level);
         String tab2 = tab + "\t";
 
+        //class start
+        String classname = node.getAttribute("name");
         if (!inner) {
             generatePackage(sb);
-            sb.append("//Generated source\n");
-
+            sb.append("//Generated source\n\n");
             generateImports(sb);
+            sb.append("public class ").append(classname).append(" implements FIXMessage {\n\n");
 
-            sb.append("public class ").append(name).append(" implements FIXMessage {\n\n");
         } else {
-            sb.append(tab).append("public static class ").append(name).append(" {\n\n");
+            sb.append(tab).append("public static class ").append(classname).append(" {\n\n");
         }
 
-        forEach(node, 0, (f, i) -> f.appendDefine(sb, tab2));
+        forEach(node, 0, (f, i) -> f.appendProperty(sb, tab2));
+        sb.append("\n");
 
-        generateInterfaceImpl(sb, node, tab2);
-
+        generateMethods(sb, node, tab2);
         generateSubClasess(sb, node, level);
-        sb.append(tab).append("}\n");
 
+        //end of class
+        sb.append(tab).append("}\n");
 
         return sb.toString();
     }
@@ -106,71 +107,75 @@ public class ProtocolGenerator {
 
         sb.append("import com.mcscm.fixtools.FIXMessage;\n");
         sb.append("import com.mcscm.fixtools.DateFormatter;\n");
+        sb.append("import java.util.ArrayList;\n");
         sb.append("\n");
     }
 
 
-    private void generateInterfaceImpl(StringBuilder sb, Element el, String tab) {
-        String msgtype = el.getAttribute("msgtype");
+    private void generateMethods(StringBuilder sb, Element el, String tab) {
 
         String tab2 = tab + "\t";
 
+        String msgtype = el.getAttribute("msgtype");
+        sb.append(tab).append("public String getType() {\n");
+        sb.append(tab2).append("return \"").append(msgtype).append("\";\n");
+        sb.append(tab).append("}\n\n");
+
+        generatePropertiesAccess(sb, el, tab);
+
+        generateEncode(sb, el, tab);
+        generateDecode(sb, el, tab);
         sb.append("\n");
-        sb.append(tab).append("public String getType() {\n").append(tab2).append("return \"")
-                .append(msgtype).append("\";\n").append(tab).append("}\n");
+    }
 
-        sb.append("\n");
-        sb.append(tab).append("public String encode() {\n");
-        sb.append(tab2).append("final StringBuilder sb = new StringBuilder();\n");
-
-        generateEncode(sb, el, tab2);
-
-        sb.append("\n").append(tab2).append("return sb.toString();\n");
-        sb.append(tab).append("}\n");
-        sb.append("\n");
-
-        //-------------
-
-        sb.append("\n");
-        sb.append(tab).append("public void decode(String fixmes) {\n");
-
-        generateDecode(sb, el, tab2);
-
-        sb.append(tab).append("}\n");
+    private void generatePropertiesAccess(StringBuilder sb, Element node, String tab) {
+        forEach(node, 0, (f, i) -> f.appendPropertyAccess(sb, tab));
         sb.append("\n");
     }
 
     private void generateEncode(StringBuilder sb, Element node, String tab) {
-        forEach(node, 0, (f, i) -> f.appendEncode(sb, tab, fieldSep));
+        String tab2 = tab + "\t";
+        sb.append(tab).append("public String encode() {\n");
+        sb.append(tab2).append("final StringBuilder sb = new StringBuilder();\n");
+
+        forEach(node, 0, (f, i) -> f.appendEncode(sb, tab2, fieldSep));
+
+        sb.append("\n").append(tab2).append("return sb.toString();\n");
+        sb.append(tab).append("}\n\n");
     }
 
     private void generateDecode(StringBuilder sb, Element node, String tab) {
-        String tab2 = tab + "\t";
-        String tab3 = tab + "\t\t";
+        sb.append(tab).append("public void decode(String fixmes) {\n");
 
-        sb.append(tab).append("int end, middle, start = 0;\n");
-        sb.append(tab).append("for (;;) {\n");
-        sb.append(tab2).append("end = fixmes.indexOf('").append(fieldSep).append("', start);\n");
-        sb.append(tab2).append("middle = fixmes.indexOf('=', start);\n");
-        sb.append(tab2).append("if (end < 0) break;\n");
-        sb.append(tab2).append("int tag = Integer.valueOf(fixmes.substring(start, middle));\n");
-        sb.append(tab2).append("String value = fixmes.substring(middle + 1, end);\n");
+        String tab2 = tab + "\t";
+        String tab3 = tab2 + "\t";
+        String tab4 = tab3 + "\t";
+
+        sb.append(tab2).append("int end, middle, start = 0;\n");
+        sb.append(tab2).append("for (;;) {\n");
+        sb.append(tab3).append("end = fixmes.indexOf('").append(fieldSep).append("', start);\n");
+        sb.append(tab3).append("middle = fixmes.indexOf('=', start);\n");
+        sb.append(tab3).append("if (end < 0) break;\n");
+        sb.append(tab3).append("int tag = Integer.valueOf(fixmes.substring(start, middle));\n");
+        sb.append(tab3).append("String value = fixmes.substring(middle + 1, end);\n");
 
         forEach(node, 0, (f, i) -> {
             if (i > 0) {
                 sb.append(" else ");
             } else {
-                sb.append(tab2);
+                sb.append(tab3);
             }
             sb.append("if (tag == ").append(f.tag).append(") {\n");
-            sb.append(tab3).append(f.fieldName).append(" = ")
+            sb.append(tab4).append(f.fieldName).append(" = ")
                     .append(Type.genereateConvertMethod(f.type, "value")).append(";\n");
-            sb.append(tab2).append("}");
+            sb.append(tab3).append("}");
         });
 
         sb.append("\n");
-        sb.append(tab2).append("start = end + 1;\n");
-        sb.append(tab).append("}\n");
+        sb.append(tab3).append("start = end + 1;\n");
+        sb.append(tab2).append("}\n");
+
+        sb.append(tab).append("}\n\n");
     }
 
     private void generateSubClasess(StringBuilder sb, Element node, int level) {
@@ -182,7 +187,7 @@ public class ProtocolGenerator {
             final String elName = el.getNodeName();
 
             if ("group".equals(elName)) {
-                String body = generateMessage(el, true, level + 1);
+                String body = generateClass(el, true, level + 1);
                 sb.append(body);
                 sb.append("\n");
 
@@ -234,6 +239,7 @@ public class ProtocolGenerator {
                 if (field == null) {
                     throw new GeneratorException("Could not find field: " + fieldName);
                 }
+                field.groupClass = fieldName;
 
                 func.accept(field, idx++);
             }
@@ -257,7 +263,9 @@ public class ProtocolGenerator {
         public final int tag;
         public final String name;
         public final String fieldName;
+        public final String fieldNameSingle;
         public final Type type;
+        public String groupClass;
 
         public FieldType(int tag, String name, Type type) {
             this.tag = tag;
@@ -268,10 +276,48 @@ public class ProtocolGenerator {
             } else {
                 fieldName = name;
             }
+
+            if (type == Type.NUMINGROUP) {
+                if (fieldName.endsWith("ies")) {
+                    fieldNameSingle = fieldName;
+                } else {
+                    fieldNameSingle = fieldName;
+                }
+            } else {
+                fieldNameSingle = null;
+            }
         }
 
-        public void appendDefine(StringBuilder sb, String tab) {
-            sb.append(tab).append("public ").append(type.javaType).append(" ").append(fieldName).append(";\n");
+
+        public void appendProperty(StringBuilder sb, String tab) {
+            sb.append(tab).append("public ");
+            if (type == Type.NUMINGROUP) {
+                sb.append("List");
+                if (groupClass != null) {
+                    sb.append("<").append(groupClass).append(">");
+                }
+            } else {
+                sb.append(type.javaType);
+            }
+            sb.append(" ").append(fieldName);
+
+//            if (type == Type.NUMINGROUP) {
+//                sb.append(" = new ArrayList<>()");
+//            }
+            sb.append(";\n");
+        }
+
+        public void appendPropertyAccess(StringBuilder sb, String tab) {
+            String tab2 = tab + "\t";
+            if (type == Type.NUMINGROUP) {
+                sb.append(tab).append("public void add").append(name)
+                        .append("(").append(name).append(" ").append(fieldName).append(") {\n");
+
+                sb.append(tab2).append("this.").append(fieldName).append(".add(").append(fieldName).append(");\n");
+
+                sb.append(tab).append("}\n");
+
+            }
         }
 
         public void appendEncode(StringBuilder sb, String tab, String sep) {
@@ -291,7 +337,6 @@ public class ProtocolGenerator {
             sb.append(")");
 
             sb.append(".append(\"").append(sep).append("\")").append(";\n");
-
             sb.append(tab).append("}\n");
         }
     }
@@ -307,5 +352,7 @@ public class ProtocolGenerator {
     public static void main(String[] args) throws Exception {
         ProtocolGenerator generator = new ProtocolGenerator("./data/FIX_test.xml");
         generator.generate();
+//
+//        System.out.println(English.plural("entry", 2));
     }
 }
