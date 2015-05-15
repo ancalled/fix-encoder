@@ -11,10 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -23,9 +20,10 @@ public class ProtocolGenerator {
     public static final String DEFAULT_FIELD_SEP = "\\001";
 
     private final XmlParser parser;
-    private final Map<String, FieldType> fieldTypes = new HashMap<>();
+    private final Map<String, FieldDescriptor> fieldTypes = new HashMap<>();
     private final String javaPackage;
     private final Path outDir;
+    private final Path enumsDir;
     private final String fieldSep;
 
     public ProtocolGenerator(String xmlIn) throws IOException, SAXException, ParserConfigurationException {
@@ -35,10 +33,13 @@ public class ProtocolGenerator {
         final String userDir = System.getProperty("user.dir");
         final String outHome = System.getProperty("out.home", userDir + "/gen-src");
         outDir = Paths.get(outHome, javaPackage.replace(".", "/"));
+        enumsDir = outDir.resolve("enums");
         Files.createDirectories(outDir);
+        Files.createDirectories(enumsDir);
     }
 
     public void generate() throws IOException {
+        System.out.println("Parsing types...");
         NodeList nodes = eval("/fix/fields/field");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element node = (Element) nodes.item(i);
@@ -46,66 +47,86 @@ public class ProtocolGenerator {
 
             int num = Integer.valueOf(node.getAttribute("number"));
             String name = node.getAttribute("name");
-            Type type = Type.valueOf(node.getAttribute("type"));
+            String typeStr = node.getAttribute("type");
+            typeStr = typeStr.replaceAll("-", "");
+            FieldType type = FieldType.valueOf(typeStr);
 
             List<EnumValue> enumValues = getEnumValues(node);
             boolean enumField = !enumValues.isEmpty();
             if (enumField) {
+                System.out.println("\tGenerating enum " + name + "...");
                 String body = generateEnum(name, type, enumValues);
-                Files.write(outDir.resolve(name + ".java"), body.getBytes());
+                Files.write(enumsDir.resolve(name + ".java"), body.getBytes());
             }
 
-            fieldTypes.put(name, new FieldType(num, name, type, enumField));
+            fieldTypes.put(name, new FieldDescriptor(num, name, type, enumField));
         }
+
+        System.out.println("Parsing messages...");
 
         nodes = eval("/fix/messages/message");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element node = (Element) nodes.item(i);
             if (node == null) continue;
 
-            String fname = node.getAttribute("name") + ".java";
+            final String name = node.getAttribute("name");
+            String fname = name + ".java";
+            System.out.println("\tGenerating class " + name + "...");
 
-            String body = generateClass(node, false, 0);
+
+            String body = generateClass(node, false, 0, new HashSet<>());
             Files.write(outDir.resolve(fname), body.getBytes());
         }
 
     }
 
-    private String generateClass(Element node, boolean inner, int level) {
+    private String generateClass(Element node, boolean inner, int level, Set<String> imports) {
 
-        StringBuilder sb = new StringBuilder();
+
         String tab = tab(level);
         String tab2 = tab + "\t";
+
+        addImports(imports, node);
+
+
+        StringBuilder bodySb = new StringBuilder();
+
+        int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, tab2));
+
+        bodySb.append(tab2).append("private final BitSet parsed = new BitSet(").append(processed).append(");\n");
+        bodySb.append("\n");
+
+        generateMethods(bodySb, node, tab2);
+        generateSubClasses(bodySb, imports, node, level);
+
+        //end of class
+        bodySb.append(tab).append("}\n");
+
+        //-------------------------------------
+        StringBuilder rootSb = new StringBuilder();
 
         //class start
         String classname = node.getAttribute("name");
         if (!inner) {
-            generatePackage(sb);
-            sb.append("//Generated source\n\n");
-            generateImports(sb);
-            sb.append("public class ").append(classname).append(" implements FIXMessage {\n\n");
+            generatePackage(rootSb);
+            rootSb.append("//Generated source\n\n");
+            rootSb.append(generateImports(imports)).append("\n");
+
+            rootSb.append("public class ").append(classname).append(" implements FIXMessage {\n\n");
 
         } else {
-            sb.append(tab).append("public static class ").append(classname).append(" {\n\n");
+            rootSb.append(tab).append("public static class ").append(classname).append(" {\n\n");
         }
 
-        int processed = forEach(node, 0, (f, i) -> f.appendProperty(sb, tab2));
+        rootSb.append(bodySb);
 
-        sb.append(tab2).append("private final BitSet parsed = new BitSet(").append(processed).append(");\n");
-        sb.append("\n");
-
-        generateMethods(sb, node, tab2);
-        generateSubClasses(sb, node, level);
-
-        //end of class
-        sb.append(tab).append("}\n");
-
-        return sb.toString();
+        return rootSb.toString();
     }
 
-    private String generateEnum(String name, Type type, List<EnumValue> enumValues) {
+    private String generateEnum(String name, FieldType type, List<EnumValue> enumValues) {
         StringBuilder sb = new StringBuilder();
-        generatePackage(sb);
+
+        sb.append("package ").append(javaPackage).append(".enums").append(";\n\n");
         sb.append("//Generated source\n\n");
 
         sb.append("public enum ").append(name).append(" {\n");
@@ -113,24 +134,32 @@ public class ProtocolGenerator {
         String tab2 = tab + "\t";
         String tab3 = tab2 + "\t";
 
-        final boolean charType = "char".equals(type.javaType);
+        String javaType = type.javaType;
+        if (type == FieldType.NUMINGROUP) {
+            javaType = "int";
+        }
 
-        for (EnumValue e: enumValues) {
+        final boolean charType = "char".equals(javaType);
+        final boolean stringType = "String".equals(javaType);
+
+        for (EnumValue e : enumValues) {
             sb.append(tab).append(e.description).append("(");
             if (charType) sb.append("'");
+            if (stringType) sb.append("\"");
             sb.append(e.code);
             if (charType) sb.append("'");
+            if (stringType) sb.append("\"");
             sb.append(")");
             sb.append(",\n");
         }
 
         sb.append(";\n");
-        sb.append(tab).append("public ").append(type.javaType).append(" value;\n\n");
-        sb.append(tab).append(name).append("(").append(type.javaType).append(" value) {\n");
+        sb.append(tab).append("public ").append(javaType).append(" value;\n\n");
+        sb.append(tab).append(name).append("(").append(javaType).append(" value) {\n");
         sb.append(tab2).append("this.value = value;\n");
         sb.append(tab).append("}\n\n");
 
-        sb.append(tab).append("public static ").append(name).append(" getByValue(").append(type.javaType).append(" value) {\n");
+        sb.append(tab).append("public static ").append(name).append(" getByValue(").append(javaType).append(" value) {\n");
         sb.append(tab2).append("for (").append(name).append(" e: values()) {\n");
         sb.append(tab3).append("if (e.value == value) return e;\n");
         sb.append(tab2).append("}\n");
@@ -146,18 +175,30 @@ public class ProtocolGenerator {
         sb.append("package ").append(javaPackage).append(";\n\n");
     }
 
-    private void generateImports(StringBuilder sb) {
-        for (Type type : Type.values()) {
-            if (!type.isJavaPrimitive()) {
-                sb.append("import ").append(type.javaFullType).append(";\n");
-            }
-        }
+    private void addImports(Set<String> imports, final Element node) {
+        forEach(node, 0, (f, i) -> {
+            if (f.enumField) {
+                imports.add(javaPackage + ".enums." + f.name);
+            } else if (!f.type.isJavaPrimitive()) {
+                imports.add(f.type.javaFullType);
 
-        sb.append("import com.mcscm.fixtools.FIXMessage;\n");
-        sb.append("import com.mcscm.fixtools.DateFormatter;\n");
-        sb.append("import java.util.ArrayList;\n");
-        sb.append("import java.util.BitSet;\n");
-        sb.append("\n");
+                if ("java.util.Date".equals(f.type.javaFullType)) {
+                    imports.add("com.mcscm.fixtools.DateFormatter");
+
+                } else if (f.type == FieldType.NUMINGROUP) {
+                    imports.add("java.util.ArrayList");
+                }
+            }
+        });
+
+        imports.add("com.mcscm.fixtools.FIXMessage");
+        imports.add("java.util.BitSet");
+    }
+
+    private String generateImports(Set<String> imports) {
+        StringBuilder sb = new StringBuilder();
+        imports.stream().map(i -> "import " + i + ";\n").forEach(sb::append);
+        return sb.toString();
     }
 
 
@@ -235,8 +276,8 @@ public class ProtocolGenerator {
             sb.append(tab5).append("end = start;\n");
             sb.append(tab5).append("break;\n");
             sb.append(tab4).append("}\n");
-            if (f.type == Type.NUMINGROUP) {
 
+            if (f.type == FieldType.NUMINGROUP) {
                 sb.append(tab4).append("int items = Integer.valueOf(value);\n");
                 sb.append(tab4).append("int groupEnd = end + 1;\n");
                 sb.append(tab4).append("for (int i = 0; i < items; i++) {\n");
@@ -248,7 +289,7 @@ public class ProtocolGenerator {
 
 
             } else {
-                String assignment = Type.genereateConvertMethod(f.type, "value");
+                String assignment = FieldType.generateConvertMethod(f.type, "value");
                 if (f.enumField) {
                     assignment = f.name + ".getByValue(" + assignment + ")";
                 }
@@ -274,7 +315,7 @@ public class ProtocolGenerator {
         sb.append(tab).append("}\n\n");
     }
 
-    private void generateSubClasses(StringBuilder sb, Element node, int level) {
+    private void generateSubClasses(StringBuilder sb, Set<String> imports, Element node, int level) {
         for (int i = 0; i < node.getChildNodes().getLength(); i++) {
             final Node item = node.getChildNodes().item(i);
             if (item == null || !(item instanceof Element)) continue;
@@ -283,7 +324,7 @@ public class ProtocolGenerator {
             final String elName = el.getNodeName();
 
             if ("group".equals(elName)) {
-                String body = generateClass(el, true, level + 1);
+                String body = generateClass(el, true, level + 1, imports);
                 sb.append(body);
                 sb.append("\n");
 
@@ -294,7 +335,7 @@ public class ProtocolGenerator {
                 for (int j = 0; j < childNodes.getLength(); j++) {
                     final Node childItem = childNodes.item(j);
                     if (childItem == null || !(childItem instanceof Element)) continue;
-                    generateSubClasses(sb, (Element) childItem, level);
+                    generateSubClasses(sb, imports, (Element) childItem, level);
                 }
             }
         }
@@ -303,7 +344,7 @@ public class ProtocolGenerator {
 
     // ---------------------------------------------------------------
 
-    private int forEach(Element node, int idx, Consumer<FieldType> func) {
+    private int forEach(Element node, int idx, Consumer<FieldDescriptor> func) {
         for (int i = 0; i < node.getChildNodes().getLength(); i++) {
             final Node item = node.getChildNodes().item(i);
             if (item == null || !(item instanceof Element)) continue;
@@ -313,7 +354,7 @@ public class ProtocolGenerator {
 
             if ("field".equals(elName)) {
                 final String fieldName = el.getAttribute("name");
-                final FieldType field = fieldTypes.get(fieldName);
+                final FieldDescriptor field = fieldTypes.get(fieldName);
                 if (field == null) {
                     throw new GeneratorException("Could not find field: " + fieldName);
                 }
@@ -331,7 +372,7 @@ public class ProtocolGenerator {
                 }
             } else if ("group".equals(elName)) {
                 final String fieldName = el.getAttribute("name");
-                final FieldType field = fieldTypes.get(fieldName);
+                final FieldDescriptor field = fieldTypes.get(fieldName);
                 if (field == null) {
                     throw new GeneratorException("Could not find field: " + fieldName);
                 }
@@ -371,16 +412,16 @@ public class ProtocolGenerator {
     }
 
 
-    public static class FieldType {
+    public static class FieldDescriptor {
         public final int tag;
         public final String name;
         public final String fieldName;
         public final String fieldNameSingle;
-        public final Type type;
+        public final FieldType type;
         public String groupClass;
         public final boolean enumField;
 
-        public FieldType(int tag, String name, Type type, boolean enumField) {
+        public FieldDescriptor(int tag, String name, FieldType type, boolean enumField) {
             this.tag = tag;
             this.name = name;
             this.type = type;
@@ -391,7 +432,7 @@ public class ProtocolGenerator {
                 fieldName = name;
             }
 
-            if (type == Type.NUMINGROUP) {
+            if (type == FieldType.NUMINGROUP) {
                 if (fieldName.endsWith("ies")) {
                     fieldNameSingle = fieldName;
                 } else {
@@ -405,7 +446,7 @@ public class ProtocolGenerator {
 
         public void appendProperty(StringBuilder sb, String tab) {
             sb.append(tab).append("public ");
-            if (type == Type.NUMINGROUP) {
+            if (type == FieldType.NUMINGROUP) {
                 sb.append("List");
                 if (groupClass != null) {
                     sb.append("<").append(groupClass).append(">");
@@ -428,7 +469,7 @@ public class ProtocolGenerator {
         public void appendPropertyAccess(StringBuilder sb, String tab) {
             String tab2 = tab + "\t";
             String tab3 = tab2 + "\t";
-            if (type == Type.NUMINGROUP) {
+            if (type == FieldType.NUMINGROUP) {
                 sb.append(tab).append("public void add").append(name)
                         .append("(").append(name).append(" ").append(fieldName).append(") {\n");
 
@@ -455,9 +496,16 @@ public class ProtocolGenerator {
 
             sb.append(tab2).append("sb.append(\"").append(tag).append("=\")");
             sb.append(".append(");
-            if (type == Type.UTCTIMESTAMP) {
-                sb.append("DateFormatter.format(").append(fieldName).append(")");
-            } else if (type == Type.NUMINGROUP) {
+            if (type == FieldType.UTCTIMESTAMP) {
+                sb.append("DateFormatter.formatAsDateTime(").append(fieldName).append(")");
+
+            } else if (type == FieldType.UTCDATE || type == FieldType.UTCDATEONLY || type == FieldType.LOCALMKTDATE) {
+                sb.append("DateFormatter.formatAsDate(").append(fieldName).append(")");
+
+            } else if (type == FieldType.UTCTIMEONLY || type == FieldType.TIME) {
+                sb.append("DateFormatter.formatAsTime(").append(fieldName).append(")");
+
+            } else if (type == FieldType.NUMINGROUP) {
                 sb.append("this.").append(fieldName).append(".size()");
             } else if (enumField) {
                 sb.append(fieldName).append(".value");
@@ -467,7 +515,7 @@ public class ProtocolGenerator {
             sb.append(")");
             sb.append(".append(\"").append(sep).append("\")").append(";\n");
 
-            if (type == Type.NUMINGROUP) {
+            if (type == FieldType.NUMINGROUP) {
                 String tab3 = tab2 + "\t";
                 sb.append(tab2).append("for (").append(name).append(" it: this.").append(fieldName).append(") {\n");
                 sb.append(tab3).append("sb.append(it.encode());\n");
@@ -497,9 +545,9 @@ public class ProtocolGenerator {
 
 
     public static void main(String[] args) throws Exception {
-        ProtocolGenerator generator = new ProtocolGenerator("./data/FIX_test.xml");
+        final String xmlIn = "./data/FIX_test.xml";
+//        final String xmlIn = "./data/FIX50.xml";
+        ProtocolGenerator generator = new ProtocolGenerator(xmlIn);
         generator.generate();
-//
-//        System.out.println(English.plural("entry", 2));
     }
 }

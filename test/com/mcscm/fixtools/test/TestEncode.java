@@ -1,7 +1,12 @@
 package com.mcscm.fixtools.test;
 
+import com.mcscm.fixtools.FIXUtils;
 import org.junit.Test;
 import org.sample.*;
+import org.sample.enums.MDBookType;
+import org.sample.enums.MDEntryType;
+import org.sample.enums.MDUpdateAction;
+import org.sample.enums.Side;
 
 import java.util.Date;
 
@@ -23,6 +28,8 @@ public class TestEncode {
         expected.transactTime = new Date();
 
         final String encode = expected.encode();
+        FIXUtils.initHeader("FIX.5.1", "Ping", "", "", "", "Pong", "", 1);
+
         System.out.println(encode);
 
         ExecutionReport restored = new ExecutionReport();
@@ -72,7 +79,7 @@ public class TestEncode {
         }
         assertEquals(exp.mDBookType, restored.mDBookType);
         assertEquals(exp.applQueueDepth, restored.applQueueDepth);
-
-
     }
+
+
 }
