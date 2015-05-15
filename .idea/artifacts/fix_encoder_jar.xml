@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="fix-encoder:jar">
+    <output-path>$PROJECT_DIR$/out/</output-path>
+    <root id="archive" name="fix-encoder.jar">
+      <element id="module-output" name="fix-encoder" />
+    </root>
+  </artifact>
+</component>

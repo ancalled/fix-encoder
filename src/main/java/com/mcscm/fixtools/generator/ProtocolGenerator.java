@@ -288,7 +288,9 @@ public class ProtocolGenerator {
                 sb.append(tab5).append("groupEnd = item.decode(fixmes, groupEnd);\n");
                 sb.append(tab5).append("add").append(f.name).append("(item);\n");
                 sb.append(tab4).append("}\n");
+                sb.append(tab4).append("parsed.set(").append(i).append(");\n");
                 sb.append(tab4).append("end = groupEnd - 1;\n");
+                sb.append(tab4).append("if (end < 0) break;\n");
 
 
             } else {
@@ -303,9 +305,10 @@ public class ProtocolGenerator {
                 }
                 sb.append(tab4).append(f.fieldName).append(" = ")
                         .append(assignment).append(";\n");
+                sb.append(tab4).append("parsed.set(").append(i).append(");\n");
+
             }
 
-            sb.append(tab4).append("parsed.set(").append(i).append(");\n");
 
             sb.append(tab3).append("}");
         });

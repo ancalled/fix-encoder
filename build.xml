@@ -1,0 +1,5 @@
+<project name="fix-encoder">
+
+    <property name="project.home" value="."/>
+
+</project>
