@@ -1,6 +1,5 @@
 package com.mcscm.fixtools.generator;
 
-import org.atteo.evo.inflector.English;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -80,18 +79,18 @@ public class ProtocolGenerator {
             sb.append(tab).append("public static class ").append(classname).append(" {\n\n");
         }
 
-        forEach(node, 0, (f, i) -> f.appendProperty(sb, tab2));
+        int processed = forEach(node, 0, (f, i) -> f.appendProperty(sb, tab2));
+        sb.append(tab2).append("private final BitSet parsed = new BitSet(").append(processed).append(");\n");
         sb.append("\n");
 
         generateMethods(sb, node, tab2);
-        generateSubClasess(sb, node, level);
+        generateSubClasses(sb, node, level);
 
         //end of class
         sb.append(tab).append("}\n");
 
         return sb.toString();
     }
-
 
 
     private void generatePackage(StringBuilder sb) {
@@ -108,6 +107,7 @@ public class ProtocolGenerator {
         sb.append("import com.mcscm.fixtools.FIXMessage;\n");
         sb.append("import com.mcscm.fixtools.DateFormatter;\n");
         sb.append("import java.util.ArrayList;\n");
+        sb.append("import java.util.BitSet;\n");
         sb.append("\n");
     }
 
@@ -122,6 +122,7 @@ public class ProtocolGenerator {
         sb.append(tab).append("}\n\n");
 
         generatePropertiesAccess(sb, el, tab);
+        generateHasValues(sb, el, tab);
 
         generateEncode(sb, el, tab);
         generateDecode(sb, el, tab);
@@ -130,6 +131,15 @@ public class ProtocolGenerator {
 
     private void generatePropertiesAccess(StringBuilder sb, Element node, String tab) {
         forEach(node, 0, (f, i) -> f.appendPropertyAccess(sb, tab));
+        sb.append("\n");
+    }
+
+    private void generateHasValues(StringBuilder sb, Element node, String tab) {
+        forEach(node, 0, (f, i) -> {
+            sb.append(tab).append("public boolean has").append(f.name).append("() {\n");
+            sb.append(tab).append("\t").append("return parsed.get(").append(i).append(");\n");
+            sb.append(tab).append("}\n\n");
+        });
         sb.append("\n");
     }
 
@@ -145,13 +155,21 @@ public class ProtocolGenerator {
     }
 
     private void generateDecode(StringBuilder sb, Element node, String tab) {
-        sb.append(tab).append("public void decode(String fixmes) {\n");
-
         String tab2 = tab + "\t";
         String tab3 = tab2 + "\t";
         String tab4 = tab3 + "\t";
+        String tab5 = tab4 + "\t";
 
-        sb.append(tab2).append("int end, middle, start = 0;\n");
+
+        sb.append(tab).append("public int decode(String fixmes) {\n");
+        sb.append(tab2).append("return decode(fixmes, 0);\n");
+        sb.append(tab).append("}\n\n");
+
+
+        sb.append(tab).append("public int decode(String fixmes, int fromIdx) {\n");
+
+        sb.append(tab2).append("parsed.clear();\n");
+        sb.append(tab2).append("int end, middle, start = fromIdx;\n");
         sb.append(tab2).append("for (;;) {\n");
         sb.append(tab3).append("end = fixmes.indexOf('").append(fieldSep).append("', start);\n");
         sb.append(tab3).append("middle = fixmes.indexOf('=', start);\n");
@@ -166,19 +184,46 @@ public class ProtocolGenerator {
                 sb.append(tab3);
             }
             sb.append("if (tag == ").append(f.tag).append(") {\n");
-            sb.append(tab4).append(f.fieldName).append(" = ")
-                    .append(Type.genereateConvertMethod(f.type, "value")).append(";\n");
+            sb.append(tab4).append("if (parsed.get(").append(i).append(")) {\n");
+            sb.append(tab5).append("end = start;\n");
+            sb.append(tab5).append("break;\n");
+            sb.append(tab4).append("}\n");
+            if (f.type == Type.NUMINGROUP) {
+
+                sb.append(tab4).append("int items = Integer.valueOf(value);\n");
+                sb.append(tab4).append("int groupEnd = end + 1;\n");
+                sb.append(tab4).append("for (int i = 0; i < items; i++) {\n");
+                sb.append(tab5).append(f.name).append(" item = new ").append(f.name).append("();\n");
+                sb.append(tab5).append("groupEnd = item.decode(fixmes, groupEnd);\n");
+                sb.append(tab5).append("add").append(f.name).append("(item);\n");
+                sb.append(tab4).append("}\n");
+                sb.append(tab4).append("end = groupEnd - 1;\n");
+
+
+            } else {
+                sb.append(tab4).append(f.fieldName).append(" = ")
+                        .append(Type.genereateConvertMethod(f.type, "value")).append(";\n");
+            }
+
+            sb.append(tab4).append("parsed.set(").append(i).append(");\n");
+
             sb.append(tab3).append("}");
         });
 
+        sb.append(" else {\n");
+        sb.append(tab4).append("end = start;\n");
+        sb.append(tab4).append("break;\n");
+        sb.append(tab3).append("}\n");
+
         sb.append("\n");
         sb.append(tab3).append("start = end + 1;\n");
-        sb.append(tab2).append("}\n");
+        sb.append(tab2).append("}\n\n");
+        sb.append(tab2).append("return end;\n");
 
         sb.append(tab).append("}\n\n");
     }
 
-    private void generateSubClasess(StringBuilder sb, Element node, int level) {
+    private void generateSubClasses(StringBuilder sb, Element node, int level) {
         for (int i = 0; i < node.getChildNodes().getLength(); i++) {
             final Node item = node.getChildNodes().item(i);
             if (item == null || !(item instanceof Element)) continue;
@@ -198,7 +243,7 @@ public class ProtocolGenerator {
                 for (int j = 0; j < childNodes.getLength(); j++) {
                     final Node childItem = childNodes.item(j);
                     if (childItem == null || !(childItem instanceof Element)) continue;
-                    generateSubClasess(sb, (Element) childItem, level);
+                    generateSubClasses(sb, (Element) childItem, level);
                 }
             }
         }
@@ -207,7 +252,7 @@ public class ProtocolGenerator {
 
     // ---------------------------------------------------------------
 
-    private void forEach(Element node, int idx, Consumer<FieldType> func) {
+    private int forEach(Element node, int idx, Consumer<FieldType> func) {
         for (int i = 0; i < node.getChildNodes().getLength(); i++) {
             final Node item = node.getChildNodes().item(i);
             if (item == null || !(item instanceof Element)) continue;
@@ -231,7 +276,7 @@ public class ProtocolGenerator {
                 for (int j = 0; j < childNodes.getLength(); j++) {
                     final Node childItem = childNodes.item(j);
                     if (childItem == null || !(childItem instanceof Element)) continue;
-                    forEach((Element) childItem, idx, func);
+                    idx = forEach((Element) childItem, idx, func);
                 }
             } else if ("group".equals(elName)) {
                 final String fieldName = el.getAttribute("name");
@@ -244,6 +289,7 @@ public class ProtocolGenerator {
                 func.accept(field, idx++);
             }
         }
+        return idx;
     }
 
     private NodeList eval(String expr) {
@@ -309,9 +355,14 @@ public class ProtocolGenerator {
 
         public void appendPropertyAccess(StringBuilder sb, String tab) {
             String tab2 = tab + "\t";
+            String tab3 = tab2 + "\t";
             if (type == Type.NUMINGROUP) {
                 sb.append(tab).append("public void add").append(name)
                         .append("(").append(name).append(" ").append(fieldName).append(") {\n");
+
+                sb.append(tab2).append("if (this.").append(fieldName).append(" == null) {\n");
+                sb.append(tab3).append("this.").append(fieldName).append(" = new ArrayList<>();\n");
+                sb.append(tab2).append("}\n");
 
                 sb.append(tab2).append("this.").append(fieldName).append(".add(").append(fieldName).append(");\n");
 
@@ -327,16 +378,26 @@ public class ProtocolGenerator {
                     .append(" != ").append(type.nullValue)
                     .append(") {\n");
 
+
             sb.append(tab2).append("sb.append(\"").append(tag).append("=\")");
             sb.append(".append(");
             if (type == Type.UTCTIMESTAMP) {
                 sb.append("DateFormatter.format(").append(fieldName).append(")");
+            } else if (type == Type.NUMINGROUP) {
+                sb.append("this.").append(fieldName).append(".size()");
             } else {
                 sb.append(fieldName);
             }
             sb.append(")");
-
             sb.append(".append(\"").append(sep).append("\")").append(";\n");
+
+            if (type == Type.NUMINGROUP) {
+                String tab3 = tab2 + "\t";
+                sb.append(tab2).append("for (").append(name).append(" it: this.").append(fieldName).append(") {\n");
+                sb.append(tab3).append("sb.append(it.encode());\n");
+                sb.append(tab2).append("}\n");
+            }
+
             sb.append(tab).append("}\n");
         }
     }
