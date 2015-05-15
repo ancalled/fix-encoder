@@ -76,6 +76,7 @@ public enum FieldType {
             case LENGTH:
                 return "Integer.parseInt(" + param + ")";
             case UTCTIMESTAMP:
+            case TZTIMESTAMP:
                 return "DateFormatter.parseDateTime(" + param + ")";
             case UTCDATE:
             case UTCDATEONLY:
@@ -83,6 +84,7 @@ public enum FieldType {
                 return "DateFormatter.parseDate(" + param + ")";
             case UTCTIMEONLY:
             case TIME:
+            case TZTIMEONLY:
                 return "DateFormatter.parseTime(" + param + ")";
             case BOOLEAN:
                 return "Boolean.valueOf(" + param + ")";
