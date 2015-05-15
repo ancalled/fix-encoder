@@ -1,8 +1,7 @@
 package com.mcscm.fixtools.test;
 
 import org.junit.Test;
-import org.sample.ExecutionReport;
-import org.sample.MarketDataIncrementalRefresh;
+import org.sample.*;
 
 import java.util.Date;
 
@@ -20,7 +19,7 @@ public class TestEncode {
         expected.account = "A0031";
         expected.price = 134.1;
         expected.cumQty = 50000;
-        expected.side = '1';
+        expected.side = Side.BUY;
         expected.transactTime = new Date();
 
         final String encode = expected.encode();
@@ -41,18 +40,18 @@ public class TestEncode {
     @Test
     public void encodeDecode2() {
         MarketDataIncrementalRefresh exp = new MarketDataIncrementalRefresh();
-        exp.mDBookType = '1';
+        exp.mDBookType = MDBookType.TOP_OF_BOOK;
         exp.applQueueDepth = 5;
 
         MarketDataIncrementalRefresh.NoMDEntries noMd1 = new MarketDataIncrementalRefresh.NoMDEntries();
-        noMd1.mDUpdateAction='1';
-        noMd1.mDEntryType = '0';
+        noMd1.mDUpdateAction = MDUpdateAction.CHANGE;
+        noMd1.mDEntryType = MDEntryType.BID;
         noMd1.mDEntryPx = 1401.1;
         exp.addNoMDEntries(noMd1);
 
         MarketDataIncrementalRefresh.NoMDEntries noMd2 = new MarketDataIncrementalRefresh.NoMDEntries();
-        noMd2.mDUpdateAction='1';
-        noMd2.mDEntryType = '1';
+        noMd2.mDUpdateAction = MDUpdateAction.CHANGE;
+        noMd2.mDEntryType = MDEntryType.OFFER;
         noMd2.mDEntryPx = 4045.3;
         exp.addNoMDEntries(noMd2);
 

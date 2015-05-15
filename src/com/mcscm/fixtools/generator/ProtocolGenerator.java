@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -45,7 +47,15 @@ public class ProtocolGenerator {
             int num = Integer.valueOf(node.getAttribute("number"));
             String name = node.getAttribute("name");
             Type type = Type.valueOf(node.getAttribute("type"));
-            fieldTypes.put(name, new FieldType(num, name, type));
+
+            List<EnumValue> enumValues = getEnumValues(node);
+            boolean enumField = !enumValues.isEmpty();
+            if (enumField) {
+                String body = generateEnum(name, type, enumValues);
+                Files.write(outDir.resolve(name + ".java"), body.getBytes());
+            }
+
+            fieldTypes.put(name, new FieldType(num, name, type, enumField));
         }
 
         nodes = eval("/fix/messages/message");
@@ -80,6 +90,7 @@ public class ProtocolGenerator {
         }
 
         int processed = forEach(node, 0, (f, i) -> f.appendProperty(sb, tab2));
+
         sb.append(tab2).append("private final BitSet parsed = new BitSet(").append(processed).append(");\n");
         sb.append("\n");
 
@@ -92,6 +103,44 @@ public class ProtocolGenerator {
         return sb.toString();
     }
 
+    private String generateEnum(String name, Type type, List<EnumValue> enumValues) {
+        StringBuilder sb = new StringBuilder();
+        generatePackage(sb);
+        sb.append("//Generated source\n\n");
+
+        sb.append("public enum ").append(name).append(" {\n");
+        String tab = "\t";
+        String tab2 = tab + "\t";
+        String tab3 = tab2 + "\t";
+
+        final boolean charType = "char".equals(type.javaType);
+
+        for (EnumValue e: enumValues) {
+            sb.append(tab).append(e.description).append("(");
+            if (charType) sb.append("'");
+            sb.append(e.code);
+            if (charType) sb.append("'");
+            sb.append(")");
+            sb.append(",\n");
+        }
+
+        sb.append(";\n");
+        sb.append(tab).append("public ").append(type.javaType).append(" value;\n\n");
+        sb.append(tab).append(name).append("(").append(type.javaType).append(" value) {\n");
+        sb.append(tab2).append("this.value = value;\n");
+        sb.append(tab).append("}\n\n");
+
+        sb.append(tab).append("public static ").append(name).append(" getByValue(").append(type.javaType).append(" value) {\n");
+        sb.append(tab2).append("for (").append(name).append(" e: values()) {\n");
+        sb.append(tab3).append("if (e.value == value) return e;\n");
+        sb.append(tab2).append("}\n");
+        sb.append(tab2).append("return null;\n");
+        sb.append(tab).append("}\n");
+
+
+        sb.append("}\n");
+        return sb.toString();
+    }
 
     private void generatePackage(StringBuilder sb) {
         sb.append("package ").append(javaPackage).append(";\n\n");
@@ -160,11 +209,9 @@ public class ProtocolGenerator {
         String tab4 = tab3 + "\t";
         String tab5 = tab4 + "\t";
 
-
         sb.append(tab).append("public int decode(String fixmes) {\n");
         sb.append(tab2).append("return decode(fixmes, 0);\n");
         sb.append(tab).append("}\n\n");
-
 
         sb.append(tab).append("public int decode(String fixmes, int fromIdx) {\n");
 
@@ -201,8 +248,12 @@ public class ProtocolGenerator {
 
 
             } else {
+                String assignment = Type.genereateConvertMethod(f.type, "value");
+                if (f.enumField) {
+                    assignment = f.name + ".getByValue(" + assignment + ")";
+                }
                 sb.append(tab4).append(f.fieldName).append(" = ")
-                        .append(Type.genereateConvertMethod(f.type, "value")).append(";\n");
+                        .append(assignment).append(";\n");
             }
 
             sb.append(tab4).append("parsed.set(").append(i).append(");\n");
@@ -304,6 +355,21 @@ public class ProtocolGenerator {
         return IntStream.range(0, level).mapToObj(i -> "\t").collect(Collectors.joining());
     }
 
+    public static List<EnumValue> getEnumValues(Node node) {
+        List<EnumValue> values = new ArrayList<>();
+        for (int i = 0; i < node.getChildNodes().getLength(); i++) {
+            final Node item = node.getChildNodes().item(i);
+            if (item == null || !(item instanceof Element)) continue;
+
+            final Element el = (Element) item;
+            if ("value".equals(el.getNodeName()) && el.hasAttribute("enum")) {
+                values.add(new EnumValue(el.getAttribute("enum"), el.getAttribute("description")));
+            }
+        }
+
+        return values;
+    }
+
 
     public static class FieldType {
         public final int tag;
@@ -312,11 +378,13 @@ public class ProtocolGenerator {
         public final String fieldNameSingle;
         public final Type type;
         public String groupClass;
+        public final boolean enumField;
 
-        public FieldType(int tag, String name, Type type) {
+        public FieldType(int tag, String name, Type type, boolean enumField) {
             this.tag = tag;
             this.name = name;
             this.type = type;
+            this.enumField = enumField;
             if (Character.isUpperCase(name.charAt(0))) {
                 fieldName = Character.toLowerCase(name.charAt(0)) + name.substring(1);
             } else {
@@ -343,7 +411,11 @@ public class ProtocolGenerator {
                     sb.append("<").append(groupClass).append(">");
                 }
             } else {
-                sb.append(type.javaType);
+                if (!enumField) {
+                    sb.append(type.javaType);
+                } else {
+                    sb.append(name);
+                }
             }
             sb.append(" ").append(fieldName);
 
@@ -374,8 +446,10 @@ public class ProtocolGenerator {
         public void appendEncode(StringBuilder sb, String tab, String sep) {
             String tab2 = tab + "\t";
 
+            String nullValue = enumField ? "null" : type.nullValue;
+
             sb.append(tab).append("if (").append(fieldName)
-                    .append(" != ").append(type.nullValue)
+                    .append(" != ").append(nullValue)
                     .append(") {\n");
 
 
@@ -385,6 +459,8 @@ public class ProtocolGenerator {
                 sb.append("DateFormatter.format(").append(fieldName).append(")");
             } else if (type == Type.NUMINGROUP) {
                 sb.append("this.").append(fieldName).append(".size()");
+            } else if (enumField) {
+                sb.append(fieldName).append(".value");
             } else {
                 sb.append(fieldName);
             }
@@ -407,6 +483,16 @@ public class ProtocolGenerator {
     public interface Consumer<T> {
 
         void accept(T t, int idx);
+    }
+
+    public static class EnumValue {
+        public final String code;
+        public final String description;
+
+        public EnumValue(String code, String description) {
+            this.code = code;
+            this.description = description;
+        }
     }
 
 
