@@ -8,7 +8,6 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathException;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -85,9 +84,7 @@ public class ProtocolGenerator {
 
     private String generateClass(Element node, boolean inner, int level, Set<String> imports) {
 
-
         String indent = indent(level);
-        String indent2 = indent + "\t";
 
         String classname = node.getAttribute("name");
 
@@ -95,12 +92,15 @@ public class ProtocolGenerator {
 
         StringBuilder bodySb = new StringBuilder();
 
-        int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, indent2, classname, javaPackage));
+        generateConstants(bodySb, node, indent);
 
-        bodySb.append(indent2).append("private final BitSet parsed = new BitSet(").append(processed).append(");\n");
+        int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, indent + "    ", classname, javaPackage));
+        System.out.printf("\tgenerated %d class properties\n", processed);
+
+        bodySb.append(indent).append("    private final BitSet parsed = new BitSet(").append(processed).append(");\n");
         bodySb.append("\n");
 
-        generateMethods(bodySb, node, indent2, classname);
+        generateMethods(bodySb, node, indent + "    ", classname);
         generateSubClasses(bodySb, imports, node, level);
 
         //end of class
@@ -113,7 +113,8 @@ public class ProtocolGenerator {
         if (!inner) {
             generatePackage(rootSb);
             rootSb.append("//Generated source\n\n");
-            rootSb.append(generateImports(imports)).append("\n");
+            generateImports(rootSb, imports);
+            rootSb.append("\n");
 
             rootSb.append("public class ").append(classname).append(" implements FIXMessage {\n\n");
 
@@ -207,12 +208,18 @@ public class ProtocolGenerator {
         imports.add("java.nio.ByteBuffer");
     }
 
-    private String generateImports(Set<String> imports) {
-        StringBuilder sb = new StringBuilder();
+    private void generateImports(StringBuilder sb, Set<String> imports) {
         imports.stream().map(i -> "import " + i + ";\n").forEach(sb::append);
-        return sb.toString();
     }
 
+    private void generateConstants(StringBuilder sb, Element node, String indent) {
+        sb.append(indent).append(String.format("    public static final byte[] SEP = \"%s\".getBytes();\n", fieldSep));
+        sb.append(indent).append("    public static final byte[] EQ = \"=\".getBytes();\n");
+
+//        forEach(node, 0, (f, i) -> f.appendFieldConstant(sb, indent + "    "));
+
+        sb.append("\n");
+    }
 
     private void generateMethods(StringBuilder sb, Element el, String indent, String className) {
 
@@ -256,10 +263,9 @@ public class ProtocolGenerator {
 
     private void generateEncode2Method(StringBuilder sb, Element node, String indent) {
 
-
         sb.append(indent).append("public void encode2(ByteBuffer buf) {\n");
 
-        forEach(node, 0, (f, i) -> f.appendEncode2(sb, indent + "    ", fieldSep));
+        forEach(node, 0, (f, i) -> f.appendEncode2(sb, indent + "    "));
         sb.append("\n");
 
         sb.append(indent).append("}\n\n");
@@ -429,119 +435,6 @@ public class ProtocolGenerator {
 
         return values;
     }
-
-
-    public static class FieldDescriptor {
-        public final int tag;
-        public final String name;
-        public final String fieldName;
-        public final FieldType type;
-        public String groupClass;
-        public final boolean enumField;
-
-        public FieldDescriptor(int tag, String name, FieldType type, boolean enumField) {
-            this.tag = tag;
-            this.name = name;
-            this.type = type;
-            this.enumField = enumField;
-            if (Character.isUpperCase(name.charAt(0))) {
-                fieldName = Character.toLowerCase(name.charAt(0)) + name.substring(1);
-            } else {
-                fieldName = name;
-            }
-
-        }
-
-
-        public void appendProperty(StringBuilder sb, String indent, String className, String packageName) {
-            sb.append(indent).append("public ");
-            if (type == FieldType.NUMINGROUP) {
-                sb.append("List");
-                if (groupClass != null) {
-                    sb.append("<").append(groupClass).append(">");
-                }
-            } else {
-                if (!enumField) {
-                    sb.append(type.javaType);
-                } else {
-                    if (className.equals(name)) {
-                        sb.append(packageName).append(".enums.").append(name);
-                    } else {
-                        sb.append(name);
-                    }
-                }
-            }
-            sb.append(" ").append(fieldName);
-
-//            if (type == Type.NUMINGROUP) {
-//                sb.append(" = new ArrayList<>()");
-//            }
-            sb.append(";\n");
-        }
-
-        public void appendPropertyAccess(StringBuilder sb, String indent) {
-            if (type == FieldType.NUMINGROUP) {
-                sb.append(indent).append("public void add").append(name)
-                        .append("(").append(name).append(" ").append(fieldName).append(") {\n");
-
-                sb.append(indent).append("    if (this.").append(fieldName).append(" == null) {\n");
-                sb.append(indent).append("        this.").append(fieldName).append(" = new ArrayList<>();\n");
-                sb.append(indent).append("    }\n");
-
-                sb.append(indent).append("    this.").append(fieldName).append(".add(").append(fieldName).append(");\n");
-
-                sb.append(indent).append("}\n");
-
-            }
-        }
-
-        public void appendEncode(StringBuilder sb, String indent, String sep) {
-
-            String nullValue = enumField ? "null" : type.nullValue;
-
-            sb.append(format(
-                    indent + "if (%s != %s) {\n",
-                    fieldName, nullValue));
-
-            sb.append(indent).append("    sb.append(\"").append(tag).append("=\")");
-            sb.append(".append(");
-            if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
-                sb.append("DateFormatter.formatAsDateTime(").append(fieldName).append(")");
-
-            } else if (type == FieldType.UTCDATE || type == FieldType.UTCDATEONLY || type == FieldType.LOCALMKTDATE) {
-                sb.append("DateFormatter.formatAsDate(").append(fieldName).append(")");
-
-            } else if (type == FieldType.UTCTIMEONLY || type == FieldType.TIME || type == FieldType.TZTIMEONLY) {
-                sb.append("DateFormatter.formatAsTime(").append(fieldName).append(")");
-
-            } else if (type == FieldType.NUMINGROUP) {
-                sb.append("this.").append(fieldName).append(".size()");
-            } else if (enumField) {
-                sb.append(fieldName).append(".value");
-            } else {
-                sb.append(fieldName);
-            }
-            sb.append(")");
-            sb.append(".append(\"").append(sep).append("\")").append(";\n");
-
-            if (type == FieldType.NUMINGROUP) {
-                sb.append(format(
-                        indent + "for (%s it: this.%s) {\n" +
-                                indent + "    sb.append(it.encode());\n" +
-                                indent + "}\n",
-                        name, fieldName
-                ));
-            }
-
-            sb.append(indent).append("}\n");
-        }
-
-        public void appendEncode2(StringBuilder sb, String indent, String sep) {
-
-        }
-
-    }
-
 
 
     @FunctionalInterface

@@ -5,6 +5,8 @@ import org.sample.MarketDataIncrementalRefresh;
 import org.sample.enums.MDEntryType;
 import org.sample.enums.MDUpdateAction;
 
+import java.nio.ByteBuffer;
+
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(java.util.concurrent.TimeUnit.NANOSECONDS)
 @Fork(value = 1)
@@ -25,6 +27,7 @@ public class PerfTestJMH {
     }
 
     private MyState state;
+    private final ByteBuffer bb = ByteBuffer.allocate(2048);
 
     @Setup(Level.Iteration)
     public void init() {
@@ -32,13 +35,21 @@ public class PerfTestJMH {
     }
 
 
-    @Benchmark
-    public String testEncode(/*final MyState state*/) {
+//    @Benchmark
+    public String testEncode() {
         final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
         return encode(marketData);
     }
 
     @Benchmark
+    public void testEncode2() {
+        bb.clear();
+        final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
+        final ByteBuffer bb = this.bb;
+        encode2(marketData, bb);
+    }
+
+//    @Benchmark
     public MarketDataIncrementalRefresh testDecode(/*final MyState state*/) {
         final String mesToDecode = state.mesToDecode;
         return decode(mesToDecode, state.marketDataDecode);
@@ -89,6 +100,38 @@ public class PerfTestJMH {
         return marketData.encode();
     }
 
+    public static void encode2(MarketDataIncrementalRefresh marketData, ByteBuffer bb) {
+        marketData.mDReqID = "1234";
+
+        MarketDataIncrementalRefresh.NoMDEntries mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
+//        mdIncGroup.securityID = "56789";
+        mdIncGroup.mDEntryPx = 50;
+//        mdIncGroup.mDEntrySize = 50;
+//        mdIncGroup.numberOfOrders = 1;
+        mdIncGroup.mDUpdateAction = MDUpdateAction.NEW;
+        mdIncGroup.mDEntryType = MDEntryType.BID;
+        if (marketData.noMDEntries == null || marketData.noMDEntries.size() < 2) {
+            marketData.addNoMDEntries(mdIncGroup);
+        } else {
+            marketData.noMDEntries.set(0, mdIncGroup);
+        }
+
+        mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
+//        mdIncGroup.securityID = "56789";
+        mdIncGroup.mDEntryPx = 50;
+//        mdIncGroup.mDEntrySize = 50;
+//        mdIncGroup.numberOfOrders = 1;
+        mdIncGroup.mDUpdateAction = MDUpdateAction.NEW;
+        mdIncGroup.mDEntryType = MDEntryType.OFFER;
+        if (marketData.noMDEntries == null || marketData.noMDEntries.size() < 2) {
+            marketData.addNoMDEntries(mdIncGroup);
+        } else {
+            marketData.noMDEntries.set(0, mdIncGroup);
+        }
+
+        marketData.encode2(bb);
+    }
+
 
     public MarketDataIncrementalRefresh decode(String text, MarketDataIncrementalRefresh mdIncRef) {
 
@@ -104,35 +147,35 @@ public class PerfTestJMH {
         return mdIncRef;
     }
 
-//    public static void main(String[] args) {
-//        PerfTestJMH bench = new PerfTestJMH();
-//        MyState state = new MyState();
-//
-//        for (int i = 0; i < 100000; i++) {
-//            bench.testEncode(state);
-//        }
-//
-//        long start = System.nanoTime();
-//        final int iterations = 1000000;
-//        for (int i = 0; i < iterations; i++) {
-//            bench.testEncode(state);
-//        }
-//        long proc = System.nanoTime() - start;
-//        long op = proc / iterations;
-//        System.out.println("Encode nanos " + op);
+    public static void main(String[] args) {
+        PerfTestJMH bench = new PerfTestJMH();
+        bench.init();
+
+        for (int i = 0; i < 100000; i++) {
+            bench.testEncode2();
+        }
+
+        long start = System.nanoTime();
+        final int iterations = 1000000;
+        for (int i = 0; i < iterations; i++) {
+            bench.testEncode2();
+        }
+        long proc = System.nanoTime() - start;
+        long op = proc / iterations;
+        System.out.println("Encode nanos " + op);
 //
 ////        System.out.println("entries: " + state.marketDataEncode.noMDEntries.size());
 //
 //        for (int i = 0; i < 100000; i++) {
-//            bench.testDecode(state);
+//            bench.testDecode();
 //        }
 //
 //        start = System.nanoTime();
 //        for (int i = 0; i < iterations; i++) {
-//            bench.testEncode(state);
+//            bench.testEncode();
 //        }
 //        proc = System.nanoTime() - start;
 //        op = proc / iterations;
 //        System.out.println("Decode nanos " + op);
-//    }
+    }
 }

@@ -8,6 +8,8 @@ import org.sample.enums.MDEntryType;
 import org.sample.enums.MDUpdateAction;
 import org.sample.enums.Side;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
@@ -28,7 +30,7 @@ public class TestEncode {
         expected.transactTime = new Date();
 
         final String encode = expected.encode();
-        FIXUtils.initHeader("FIX.5.1", "Ping", "", "", "", "Pong", "", 1);
+//        FIXUtils.initHeader("FIX.5.1", "Ping", "", "", "", "Pong", "", 1);
 
         System.out.println(encode);
 
@@ -96,6 +98,64 @@ public class TestEncode {
 
         System.out.println(md.mDReqID);
 
+    }
+
+    @Test
+    public void testEncodeByteBuffer() {
+        ByteBuffer bb = ByteBuffer.allocate(1024);
+
+        ExecutionReport expected = new ExecutionReport();
+        expected.orderID = "131012";
+        expected.symbol = "I0001";
+        expected.account = "A0031";
+        expected.price = 134.1;
+        expected.cumQty = 50000;
+        expected.side = Side.BUY;
+        expected.transactTime = new Date();
+
+        expected.encode2(bb);
+        bb.flip();
+
+        String text = StandardCharsets.US_ASCII.decode(bb).toString();
+        System.out.println(text);
+
+        System.out.println(expected.encode());
+        assertEquals(expected.encode().trim(), text.trim());
+    }
+
+    @Test
+    public void testEncodeByteBuffer2() {
+        ByteBuffer bb = ByteBuffer.allocate(1024);
+
+        MarketDataIncrementalRefresh exp = new MarketDataIncrementalRefresh();
+        exp.mDReqID = "1234";
+        exp.mDBookType = MDBookType.TOP_OF_BOOK;
+        exp.applQueueDepth = 5;
+
+        MarketDataIncrementalRefresh.NoMDEntries noMd1 = new MarketDataIncrementalRefresh.NoMDEntries();
+        noMd1.mDUpdateAction = MDUpdateAction.CHANGE;
+        noMd1.mDEntryType = MDEntryType.BID;
+//        noMd1.securityID = "4125112";
+        noMd1.mDEntryPx = 1401.1;
+//        noMd1.mDEntrySize = 100000;
+//        noMd1.numberOfOrders = 1;
+        exp.addNoMDEntries(noMd1);
+
+        MarketDataIncrementalRefresh.NoMDEntries noMd2 = new MarketDataIncrementalRefresh.NoMDEntries();
+        noMd2.mDUpdateAction = MDUpdateAction.CHANGE;
+        noMd2.mDEntryType = MDEntryType.OFFER;
+        noMd2.mDEntryPx = 4045.3;
+//        noMd1.securityID = "ca3Csfc";
+//        noMd1.mDEntrySize = 314511;
+        exp.addNoMDEntries(noMd2);
+
+        exp.encode2(bb);
+        bb.flip();
+
+        String text = StandardCharsets.US_ASCII.decode(bb).toString();
+        System.out.println(text);
+
+        System.out.println(exp.encode());
     }
 
 }
