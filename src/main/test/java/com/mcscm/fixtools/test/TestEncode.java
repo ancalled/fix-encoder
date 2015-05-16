@@ -54,18 +54,18 @@ public class TestEncode {
         MarketDataIncrementalRefresh.NoMDEntries noMd1 = new MarketDataIncrementalRefresh.NoMDEntries();
         noMd1.mDUpdateAction = MDUpdateAction.CHANGE;
         noMd1.mDEntryType = MDEntryType.BID;
-        noMd1.securityID = "4125112";
+//        noMd1.securityID = "4125112";
         noMd1.mDEntryPx = 1401.1;
-        noMd1.mDEntrySize = 100000;
-        noMd1.numberOfOrders = 1;
+//        noMd1.mDEntrySize = 100000;
+//        noMd1.numberOfOrders = 1;
         exp.addNoMDEntries(noMd1);
 
         MarketDataIncrementalRefresh.NoMDEntries noMd2 = new MarketDataIncrementalRefresh.NoMDEntries();
         noMd2.mDUpdateAction = MDUpdateAction.CHANGE;
         noMd2.mDEntryType = MDEntryType.OFFER;
         noMd2.mDEntryPx = 4045.3;
-        noMd1.securityID = "ca3Csfc";
-        noMd1.mDEntrySize = 314511;
+//        noMd1.securityID = "ca3Csfc";
+//        noMd1.mDEntrySize = 314511;
         exp.addNoMDEntries(noMd2);
 
 

@@ -8,12 +8,15 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static java.lang.String.format;
 
 public class ProtocolGenerator {
 
@@ -83,8 +86,8 @@ public class ProtocolGenerator {
     private String generateClass(Element node, boolean inner, int level, Set<String> imports) {
 
 
-        String tab = tab(level);
-        String tab2 = tab + "\t";
+        String indent = indent(level);
+        String indent2 = indent + "\t";
 
         String classname = node.getAttribute("name");
 
@@ -92,16 +95,16 @@ public class ProtocolGenerator {
 
         StringBuilder bodySb = new StringBuilder();
 
-        int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, tab2, classname, javaPackage));
+        int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, indent2, classname, javaPackage));
 
-        bodySb.append(tab2).append("private final BitSet parsed = new BitSet(").append(processed).append(");\n");
+        bodySb.append(indent2).append("private final BitSet parsed = new BitSet(").append(processed).append(");\n");
         bodySb.append("\n");
 
-        generateMethods(bodySb, node, tab2, classname);
+        generateMethods(bodySb, node, indent2, classname);
         generateSubClasses(bodySb, imports, node, level);
 
         //end of class
-        bodySb.append(tab).append("}\n");
+        bodySb.append(indent).append("}\n");
 
         //-------------------------------------
         StringBuilder rootSb = new StringBuilder();
@@ -115,7 +118,7 @@ public class ProtocolGenerator {
             rootSb.append("public class ").append(classname).append(" implements FIXMessage {\n\n");
 
         } else {
-            rootSb.append(tab).append("public static class ").append(classname).append(" {\n\n");
+            rootSb.append(indent).append("public static class ").append(classname).append(" {\n\n");
         }
 
         rootSb.append(bodySb);
@@ -130,9 +133,7 @@ public class ProtocolGenerator {
         sb.append("//Generated source\n\n");
 
         sb.append("public enum ").append(name).append(" {\n");
-        String tab = "\t";
-        String tab2 = tab + "\t";
-        String tab3 = tab2 + "\t";
+        String indent = "\t";
 
         String javaType = type.javaType;
         if (type == FieldType.NUMINGROUP) {
@@ -143,7 +144,7 @@ public class ProtocolGenerator {
         final boolean stringType = "String".equals(javaType);
 
         for (EnumValue e : enumValues) {
-            sb.append(tab).append(e.description).append("(");
+            sb.append(indent).append(e.description).append("(");
             if (charType) sb.append("'");
             if (stringType) sb.append("\"");
             sb.append(e.code);
@@ -154,18 +155,25 @@ public class ProtocolGenerator {
         }
 
         sb.append(";\n");
-        sb.append(tab).append("public ").append(javaType).append(" value;\n\n");
-        sb.append(tab).append(name).append("(").append(javaType).append(" value) {\n");
-        sb.append(tab2).append("this.value = value;\n");
-        sb.append(tab).append("}\n\n");
 
-        sb.append(tab).append("public static ").append(name).append(" getByValue(").append(javaType).append(" value) {\n");
-        sb.append(tab2).append("for (").append(name).append(" e: values()) {\n");
-        sb.append(tab3).append("if (e.value == value) return e;\n");
-        sb.append(tab2).append("}\n");
-        sb.append(tab2).append("return null;\n");
-        sb.append(tab).append("}\n");
+        sb.append(format(
+                indent + "public %s value;\n\n" +
 
+                        indent + "%s(%s value) {\n" +
+                        indent + "    this.value = value;\n" +
+                        indent + "}\n\n",
+                javaType, name, javaType
+        ));
+
+        sb.append(format(
+                indent + "public static %s getByValue(%s value) {\n" +
+                        indent + "    for (%s e: values()) {\n" +
+                        indent + "        if (e.value == value) return e;\n" +
+                        indent + "    };\n" +
+                        indent + "    return null;\n" +
+                        indent + "}\n",
+                name, javaType, name
+        ));
 
         sb.append("}\n");
         return sb.toString();
@@ -196,6 +204,7 @@ public class ProtocolGenerator {
 
         imports.add("com.mcscm.fixtools.FIXMessage");
         imports.add("java.util.BitSet");
+        imports.add("java.nio.ByteBuffer");
     }
 
     private String generateImports(Set<String> imports) {
@@ -205,125 +214,124 @@ public class ProtocolGenerator {
     }
 
 
-    private void generateMethods(StringBuilder sb, Element el, String tab, String className) {
+    private void generateMethods(StringBuilder sb, Element el, String indent, String className) {
 
-        String tab2 = tab + "\t";
+        sb.append(format(
+                indent + "public String getType() {\n" +
+                        indent + "    return \"%s\";\n" +
+                        indent + "}\n\n",
+                el.getAttribute("msgtype")));
 
-        String msgtype = el.getAttribute("msgtype");
-        sb.append(tab).append("public String getType() {\n");
-        sb.append(tab2).append("return \"").append(msgtype).append("\";\n");
-        sb.append(tab).append("}\n\n");
-
-        generatePropertiesAccess(sb, el, tab);
-        generateHasValues(sb, el, tab);
-
-        generateEncode(sb, el, tab);
-        generateDecode(sb, el, tab, className);
+        generatePropertiesAccess(sb, el, indent);
+        generateHasValues(sb, el, indent);
+        generateEncodeMethod(sb, el, indent);
+        generateEncode2Method(sb, el, indent);
+        generateDecodeMethod(sb, el, indent, className);
         sb.append("\n");
     }
 
-    private void generatePropertiesAccess(StringBuilder sb, Element node, String tab) {
-        forEach(node, 0, (f, i) -> f.appendPropertyAccess(sb, tab));
+    private void generatePropertiesAccess(StringBuilder sb, Element node, String indent) {
+        forEach(node, 0, (f, i) -> f.appendPropertyAccess(sb, indent));
+    }
+
+    private void generateHasValues(StringBuilder sb, Element node, String indent) {
+        forEach(node, 0, (f, i) ->
+                sb.append(format(
+                        indent + "public boolean has%s () {\n" +
+                                indent + "    return parsed.get(%d);\n" +
+                                indent + "}\n\n",
+                        f.name, i)));
         sb.append("\n");
     }
 
-    private void generateHasValues(StringBuilder sb, Element node, String tab) {
+    private void generateEncodeMethod(StringBuilder sb, Element node, String indent) {
+
+        sb.append(indent).append("public String encode() {\n");
+        sb.append(indent).append("    final StringBuilder sb = new StringBuilder();\n");
+        forEach(node, 0, (f, i) -> f.appendEncode(sb, indent + "    ", fieldSep));
+        sb.append("\n");
+        sb.append(indent).append("    return sb.toString();\n");
+        sb.append(indent).append("}\n\n");
+    }
+
+    private void generateEncode2Method(StringBuilder sb, Element node, String indent) {
+
+
+        sb.append(indent).append("public void encode2(ByteBuffer buf) {\n");
+
+        forEach(node, 0, (f, i) -> f.appendEncode2(sb, indent + "    ", fieldSep));
+        sb.append("\n");
+
+        sb.append(indent).append("}\n\n");
+    }
+
+    private void generateDecodeMethod(StringBuilder sb, Element node, String indent, String className) {
+        sb.append(format(
+                indent + "public int decode(String fixmes) {\n" +
+                        indent + "    return decode(fixmes, 0);\n" +
+                        indent + "}\n\n" +
+
+                        indent + "public int decode(String fixmes, int fromIdx) {\n" +
+                        indent + "    parsed.clear();\n" +
+                        indent + "    int end, middle, start = fromIdx;\n" +
+                        indent + "    for (;;) {\n" +
+                        indent + "        end = fixmes.indexOf('%s', start);\n" +
+                        indent + "        middle = fixmes.indexOf('=', start);\n" +
+                        indent + "        if (end < 0) break;\n" +
+                        indent + "        int tag = Integer.valueOf(fixmes.substring(start, middle));\n" +
+                        indent + "        String value = fixmes.substring(middle + 1, end);\n"
+                , fieldSep));
+
         forEach(node, 0, (f, i) -> {
-            sb.append(tab).append("public boolean has").append(f.name).append("() {\n");
-            sb.append(tab).append("\t").append("return parsed.get(").append(i).append(");\n");
-            sb.append(tab).append("}\n\n");
-        });
-        sb.append("\n");
-    }
-
-    private void generateEncode(StringBuilder sb, Element node, String tab) {
-        String tab2 = tab + "\t";
-        sb.append(tab).append("public String encode() {\n");
-        sb.append(tab2).append("final StringBuilder sb = new StringBuilder();\n");
-
-        forEach(node, 0, (f, i) -> f.appendEncode(sb, tab2, fieldSep));
-
-        sb.append("\n").append(tab2).append("return sb.toString();\n");
-        sb.append(tab).append("}\n\n");
-    }
-
-    private void generateDecode(StringBuilder sb, Element node, String tab, String className) {
-        String tab2 = tab + "\t";
-        String tab3 = tab2 + "\t";
-        String tab4 = tab3 + "\t";
-        String tab5 = tab4 + "\t";
-
-        sb.append(tab).append("public int decode(String fixmes) {\n");
-        sb.append(tab2).append("return decode(fixmes, 0);\n");
-        sb.append(tab).append("}\n\n");
-
-        sb.append(tab).append("public int decode(String fixmes, int fromIdx) {\n");
-
-        sb.append(tab2).append("parsed.clear();\n");
-        sb.append(tab2).append("int end, middle, start = fromIdx;\n");
-        sb.append(tab2).append("for (;;) {\n");
-        sb.append(tab3).append("end = fixmes.indexOf('").append(fieldSep).append("', start);\n");
-        sb.append(tab3).append("middle = fixmes.indexOf('=', start);\n");
-        sb.append(tab3).append("if (end < 0) break;\n");
-        sb.append(tab3).append("int tag = Integer.valueOf(fixmes.substring(start, middle));\n");
-        sb.append(tab3).append("String value = fixmes.substring(middle + 1, end);\n");
-
-        forEach(node, 0, (f, i) -> {
-            if (i > 0) {
-                sb.append(" else ");
-            } else {
-                sb.append(tab3);
-            }
+            sb.append(i > 0 ? " else " : indent + "        ");
             sb.append("if (tag == ").append(f.tag).append(") {\n");
-            sb.append(tab4).append("if (parsed.get(").append(i).append(")) {\n");
-            sb.append(tab5).append("end = start;\n");
-            sb.append(tab5).append("break;\n");
-            sb.append(tab4).append("}\n");
+            sb.append(indent).append("            if (parsed.get(").append(i).append(")) {\n");
+            sb.append(indent).append("                end = start;\n");
+            sb.append(indent).append("                break;\n");
+            sb.append(indent).append("            }\n");
 
             if (f.type == FieldType.NUMINGROUP) {
-                sb.append(tab4).append("int items = Integer.valueOf(value);\n");
-                sb.append(tab4).append("int groupEnd = end + 1;\n");
-                sb.append(tab4).append("for (int i = 0; i < items; i++) {\n");
-                sb.append(tab5).append(f.name).append(" item = new ").append(f.name).append("();\n");
-                sb.append(tab5).append("groupEnd = item.decode(fixmes, groupEnd);\n");
-                sb.append(tab5).append("add").append(f.name).append("(item);\n");
-                sb.append(tab4).append("}\n");
-                sb.append(tab4).append("parsed.set(").append(i).append(");\n");
-                sb.append(tab4).append("end = groupEnd - 1;\n");
-                sb.append(tab4).append("if (end < 0) break;\n");
-
-
+                sb.append(format(
+                        indent + "            int items = Integer.valueOf(value);\n" +
+                                indent + "            int groupEnd = end + 1;\n" +
+                                indent + "            for (int i = 0; i < items; i++) {\n" +
+                                indent + "                %s item = new %s();\n" +
+                                indent + "                groupEnd = item.decode(fixmes, groupEnd);\n" +
+                                indent + "                add%s(item);\n" +
+                                indent + "            }\n" +
+                                indent + "            parsed.set(%d);\n" +
+                                indent + "            end = groupEnd - 1;\n" +
+                                indent + "            if (end < 0) break;\n",
+                        f.name, f.name, f.name, i));
             } else {
                 String assignment = FieldType.generateConvertMethod(f.type, "value");
                 if (f.enumField) {
-                    String enumName = f.name;
-                    if (f.name.equals(className)) {
-                        enumName = javaPackage + ".enums." + f.name;
-                    }
-
+                    String enumName =
+                            f.name.equals(className) ?
+                                    javaPackage + ".enums." + f.name :
+                                    f.name;
                     assignment = enumName + ".getByValue(" + assignment + ")";
                 }
-                sb.append(tab4).append(f.fieldName).append(" = ")
-                        .append(assignment).append(";\n");
-                sb.append(tab4).append("parsed.set(").append(i).append(");\n");
-
+                sb.append(format(
+                        indent + "            %s = %s;\n" +
+                                indent + "            parsed.set(%d);\n",
+                        f.fieldName, assignment, i));
             }
 
-
-            sb.append(tab3).append("}");
+            sb.append(indent).append("        }");
         });
 
         sb.append(" else {\n");
-        sb.append(tab4).append("end = start;\n");
-        sb.append(tab4).append("break;\n");
-        sb.append(tab3).append("}\n");
+        sb.append(indent).append("            end = start;\n");
+        sb.append(indent).append("            break;\n");
+        sb.append(indent).append("        }\n");
 
         sb.append("\n");
-        sb.append(tab3).append("start = end + 1;\n");
-        sb.append(tab2).append("}\n\n");
-        sb.append(tab2).append("return end;\n");
+        sb.append(indent).append("        start = end + 1;\n");
+        sb.append(indent).append("    }\n\n");
+        sb.append(indent).append("    return end;\n");
 
-        sb.append(tab).append("}\n\n");
+        sb.append(indent).append("}\n\n");
     }
 
     private void generateSubClasses(StringBuilder sb, Set<String> imports, Element node, int level) {
@@ -403,7 +411,7 @@ public class ProtocolGenerator {
         }
     }
 
-    public static String tab(int level) {
+    public static String indent(int level) {
         return IntStream.range(0, level).mapToObj(i -> "\t").collect(Collectors.joining());
     }
 
@@ -445,8 +453,8 @@ public class ProtocolGenerator {
         }
 
 
-        public void appendProperty(StringBuilder sb, String tab, String className, String packageName) {
-            sb.append(tab).append("public ");
+        public void appendProperty(StringBuilder sb, String indent, String className, String packageName) {
+            sb.append(indent).append("public ");
             if (type == FieldType.NUMINGROUP) {
                 sb.append("List");
                 if (groupClass != null) {
@@ -471,35 +479,31 @@ public class ProtocolGenerator {
             sb.append(";\n");
         }
 
-        public void appendPropertyAccess(StringBuilder sb, String tab) {
-            String tab2 = tab + "\t";
-            String tab3 = tab2 + "\t";
+        public void appendPropertyAccess(StringBuilder sb, String indent) {
             if (type == FieldType.NUMINGROUP) {
-                sb.append(tab).append("public void add").append(name)
+                sb.append(indent).append("public void add").append(name)
                         .append("(").append(name).append(" ").append(fieldName).append(") {\n");
 
-                sb.append(tab2).append("if (this.").append(fieldName).append(" == null) {\n");
-                sb.append(tab3).append("this.").append(fieldName).append(" = new ArrayList<>();\n");
-                sb.append(tab2).append("}\n");
+                sb.append(indent).append("    if (this.").append(fieldName).append(" == null) {\n");
+                sb.append(indent).append("        this.").append(fieldName).append(" = new ArrayList<>();\n");
+                sb.append(indent).append("    }\n");
 
-                sb.append(tab2).append("this.").append(fieldName).append(".add(").append(fieldName).append(");\n");
+                sb.append(indent).append("    this.").append(fieldName).append(".add(").append(fieldName).append(");\n");
 
-                sb.append(tab).append("}\n");
+                sb.append(indent).append("}\n");
 
             }
         }
 
-        public void appendEncode(StringBuilder sb, String tab, String sep) {
-            String tab2 = tab + "\t";
+        public void appendEncode(StringBuilder sb, String indent, String sep) {
 
             String nullValue = enumField ? "null" : type.nullValue;
 
-            sb.append(tab).append("if (").append(fieldName)
-                    .append(" != ").append(nullValue)
-                    .append(") {\n");
+            sb.append(format(
+                    indent + "if (%s != %s) {\n",
+                    fieldName, nullValue));
 
-
-            sb.append(tab2).append("sb.append(\"").append(tag).append("=\")");
+            sb.append(indent).append("    sb.append(\"").append(tag).append("=\")");
             sb.append(".append(");
             if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
                 sb.append("DateFormatter.formatAsDateTime(").append(fieldName).append(")");
@@ -521,15 +525,23 @@ public class ProtocolGenerator {
             sb.append(".append(\"").append(sep).append("\")").append(";\n");
 
             if (type == FieldType.NUMINGROUP) {
-                String tab3 = tab2 + "\t";
-                sb.append(tab2).append("for (").append(name).append(" it: this.").append(fieldName).append(") {\n");
-                sb.append(tab3).append("sb.append(it.encode());\n");
-                sb.append(tab2).append("}\n");
+                sb.append(format(
+                        indent + "for (%s it: this.%s) {\n" +
+                                indent + "    sb.append(it.encode());\n" +
+                                indent + "}\n",
+                        name, fieldName
+                ));
             }
 
-            sb.append(tab).append("}\n");
+            sb.append(indent).append("}\n");
         }
+
+        public void appendEncode2(StringBuilder sb, String indent, String sep) {
+
+        }
+
     }
+
 
 
     @FunctionalInterface
@@ -550,8 +562,8 @@ public class ProtocolGenerator {
 
 
     public static void main(String[] args) throws Exception {
-//        final String xmlIn = "./data/FIX_test.xml";
-        final String xmlIn = "./data/FIX50.xml";
+        final String xmlIn = "./data/FIX_test.xml";
+//        final String xmlIn = "./data/FIX50.xml";
         ProtocolGenerator generator = new ProtocolGenerator(xmlIn);
         generator.generate();
     }
