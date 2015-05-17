@@ -14,7 +14,8 @@ public class EncodeUtil {
 
     public static void putAsString(ByteBuffer bb, int i, int offset) {
 
-        int index = (i < 0) ? stringSize(-i) + 1
+        int index = (i < 0) ?
+                stringSize(-i) + 1
                 : stringSize(i);
 
         int q, r;
@@ -32,8 +33,8 @@ public class EncodeUtil {
             // really: r = i - (q * 100);
             r = i - ((q << 6) + (q << 5) + (q << 2));
             i = q;
-            bb.put(offset + index - (--pos), DigitOnes[r]);
-            bb.put(offset + index - (--pos), DigitTens[r]);
+            bb.put(offset + (--pos), DigitOnes[r]);
+            bb.put(offset + (--pos), DigitTens[r]);
 //            buf[--pos] = DigitOnes[r];
 //            buf[--pos] = DigitTens[r];
         }
@@ -43,7 +44,7 @@ public class EncodeUtil {
         for (; ; ) {
             q = (i * 52429) >>> (16 + 3);
             r = i - ((q << 3) + (q << 1));  // r = i-(q*10) ...
-            bb.put(offset + index - (--pos), digits[r]);
+            bb.put(offset + (--pos), digits[r]);
 //            buf[--pos] = digits[r];
             i = q;
             if (i == 0) break;
@@ -112,7 +113,6 @@ public class EncodeUtil {
     };
 
 
-
     final static byte[] DigitTens = {
             48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
             49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
@@ -138,27 +138,70 @@ public class EncodeUtil {
     }
 
 
-    public static byte charToByte(char ch) {
-        return Character.toString(ch).getBytes()[0];
-    }
-
     public static void main(String[] args) {
         int i = new Random().nextInt();
         System.out.println("i = " + i);
 
-//        int size = (i < 0) ? stringSize(-i) + 1
-//                : stringSize(i);
-//        byte[] bytes = new byte[size];
-//        getBytes(i, size, bytes);
-//
-//        System.out.println("bytes = " + Arrays.toString(bytes));
-//        System.out.println(new String(bytes));
-        ByteBuffer bb = ByteBuffer.allocate(1024);
+        int size = (i < 0) ? stringSize(-i) + 1
+                : stringSize(i);
+        byte[] bytes = new byte[size];
+        getBytes(i, size, bytes);
+
+        System.out.println("bytes = " + Arrays.toString(bytes));
+        System.out.println(new String(bytes));
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(1024);
         putAsString(bb, i);
-        bb.flip();
+//        bb.put(bytes);
+
+//        bb.flip();
 
         String text = StandardCharsets.US_ASCII.decode(bb).toString();
+        System.out.println("From ByteBuffer:");
         System.out.println(text);
+    }
+
+
+    public static void main1(String[] args) {
+        String text = "123";
+        byte[] bytes = text.getBytes();
+        int size = bytes.length;
+
+//        ByteBuffer bb = ByteBuffer.allocateDirect(100);
+        ByteBuffer bb = ByteBuffer.allocate(100);
+//        bb.rewind();
+        int i = 0;
+
+//        System.out.print(bb.position());
+//        bb.position(size - i - 1);
+//        System.out.print(" -> " + bb.position() + " -> ");
+        System.out.println("i = " + (size - i - 1));
+        bb.put(size - i - 1, bytes[i++]);
+//        System.out.println(bb.position());
+
+//        bb.position(size - i - 1);
+//        System.out.print(" -> " + bb.position() + " -> ");
+        System.out.println("i = " + (size - i - 1));
+        bb.put(size - i - 1, bytes[i++]);
+//        System.out.println(bb.position());
+
+//        bb.position(size - i - 1);
+//        System.out.print(" -> " + bb.position() + " -> ");
+
+        System.out.println("i = " + (size - i - 1));
+        bb.put(size - i - 1, bytes[i++]);
+//        System.out.println(bb.position());
+
+//        bb.flip();
+
+
+//        byte[] res = new byte[size];
+//        bb.get(res);
+
+        System.out.println();
+//        System.out.println(Arrays.toString(res));
+        System.out.println(StandardCharsets.US_ASCII.decode(bb).toString());
+
     }
 
 }

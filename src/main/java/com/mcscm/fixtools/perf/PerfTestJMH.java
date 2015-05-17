@@ -27,7 +27,8 @@ public class PerfTestJMH {
     }
 
     private MyState state;
-    private final ByteBuffer bb = ByteBuffer.allocate(2048);
+//    private final ByteBuffer bb = ByteBuffer.allocate(2048);
+    private final ByteBuffer bb = ByteBuffer.allocateDirect(2048);
 
     @Setup(Level.Iteration)
     public void init() {
@@ -35,17 +36,18 @@ public class PerfTestJMH {
     }
 
 
-//    @Benchmark
+    @Benchmark
     public String testEncode() {
         final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
         return encode(marketData);
     }
 
-    @Benchmark
+//    @Benchmark
     public void testEncode2() {
-        bb.clear();
         final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
         final ByteBuffer bb = this.bb;
+        bb.clear();
+
         encode2(marketData, bb);
     }
 
@@ -178,4 +180,6 @@ public class PerfTestJMH {
 //        op = proc / iterations;
 //        System.out.println("Decode nanos " + op);
     }
+
+
 }

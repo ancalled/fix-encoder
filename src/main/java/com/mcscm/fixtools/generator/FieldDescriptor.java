@@ -175,7 +175,7 @@ public class FieldDescriptor {
             ));
         }
 
-        sb.append(indent).append("\"    buf.put(SEP);\n");
+        sb.append(indent).append("    buf.put(SEP);\n");
         sb.append(indent).append("}\n");
     }
 
