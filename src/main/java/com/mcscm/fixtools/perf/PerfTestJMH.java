@@ -42,7 +42,7 @@ public class PerfTestJMH {
         return encode(marketData);
     }
 
-//    @Benchmark
+    @Benchmark
     public void testEncode2() {
         final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
         final ByteBuffer bb = this.bb;

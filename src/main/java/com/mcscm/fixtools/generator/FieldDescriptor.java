@@ -50,7 +50,7 @@ public class FieldDescriptor {
 
     public void appendFieldConstant(StringBuilder sb, String indent) {
         sb.append(indent);
-        sb.append(String.format("public static final byte[] %s %S = ", name, name));
+        sb.append(String.format("public static final byte[] TAG_%S = \"%d\".getBytes();\n", name, tag));
     }
 
     public void appendPropertyAccess(StringBuilder sb, String indent) {
@@ -69,7 +69,7 @@ public class FieldDescriptor {
         }
     }
 
-    public void appendEncode(StringBuilder sb, String indent, String sep) {
+    public void appendEncode(StringBuilder sb, String indent, char sep) {
 
         String nullValue = enumField ? "null" : type.nullValue;
         sb.append(format(
@@ -95,7 +95,7 @@ public class FieldDescriptor {
             sb.append(fieldName);
         }
         sb.append(")");
-        sb.append(".append(\"").append(sep).append("\")").append(";\n");
+        sb.append(".append('").append(sep).append("')").append(";\n");
 
         if (type == FieldType.NUMINGROUP) {
             sb.append(format(
@@ -119,33 +119,35 @@ public class FieldDescriptor {
         String mthd = "";
         switch (type.javaType) {
             case "String":
-                mthd = "%s";
+//                mthd = "buf.put(%s.getBytes())";
+                mthd = "EncodeUtils.put(buf, %s)";
                 break;
             case "int":
             case "List":
-                mthd = "Integer.toString(%s)";
+//                mthd = "buf.put(Integer.toString(%s).getBytes())";
+                mthd = "EncodeUtils.put(buf, %s)";
                 break;
             case "long":
-                mthd = "Long.toString(%s)";
+                mthd = "buf.put(Long.toString(%s).getBytes())";
                 break;
             case "double":
-                mthd = "Double.toString(%s)";
+                mthd = "buf.put(Double.toString(%s).getBytes())";
                 break;
             case "char":
-                mthd = "Character.toString(%s)";
+                mthd = "buf.put(Character.toString(%s).getBytes())";
                 break;
             case "boolean":
-                mthd = "Boolean.toString(%s)";
+                mthd = "buf.put(Boolean.toString(%s).getBytes())";
                 break;
             case "Date":
                 if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
-                    mthd = "DateFormatter.formatAsDateTime(%s)";
+                    mthd = "buf.put(DateFormatter.formatAsDateTime(%s).getBytes())";
 
                 } else if (type == FieldType.UTCDATE || type == FieldType.UTCDATEONLY || type == FieldType.LOCALMKTDATE) {
-                    mthd = "DateFormatter.formatAsDate(%s)";
+                    mthd = "buf.put(DateFormatter.formatAsDate(%s).getBytes())";
 
                 } else if (type == FieldType.UTCTIMEONLY || type == FieldType.TIME || type == FieldType.TZTIMEONLY) {
-                    mthd = "DateFormatter.formatAsTime(%s)";
+                    mthd = "buf.put(DateFormatter.formatAsTime(%s).getBytes())";
                 }
                 break;
         }
@@ -161,10 +163,12 @@ public class FieldDescriptor {
 
         String putMthd = String.format(mthd, arg);
         sb.append(String.format(
-                indent + "    buf.put(\"%d\".getBytes());\n" +
-                        indent + "    buf.putChar('=');\n" +
-                        indent + "    buf.put(%s.getBytes());\n"
-                , tag, putMthd));
+//                indent + "    buf.put(\"%d\".getBytes());\n" +
+                indent + "    buf.put(TAG_%S);\n" +
+                        indent + "    buf.put(EQ);\n" +
+//                        indent + "    buf.put(%s.getBytes());\n"
+                        indent + "    %s;\n"
+                , name, putMthd));
 
         if (type == FieldType.NUMINGROUP) {
             sb.append(format(

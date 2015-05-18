@@ -14,6 +14,7 @@ import java.util.Random;
 public class BaselineTest2 {
 
     private final int intVal = new Random().nextInt();
+    private final String strVal = Integer.toString(intVal);
     private final char[] chars = new char[100];
 
 //    @Setup(Level.Iteration)
@@ -21,10 +22,19 @@ public class BaselineTest2 {
 //
 //    }
 
+
+
     // 50.474 ± 1.316  ns/op
-//    @Benchmark
+    @Benchmark
     public String intToString() {
+        final int intVal = this.intVal;
         return Integer.toString(intVal);
+    }
+
+    @Benchmark
+    public int strToInt() {
+        final String strVal = this.strVal;
+        return Integer.parseInt(strVal);
     }
 
     // 115.294 ± 3.926  ns/op

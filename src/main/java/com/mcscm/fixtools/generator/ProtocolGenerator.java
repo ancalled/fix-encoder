@@ -19,19 +19,19 @@ import static java.lang.String.format;
 
 public class ProtocolGenerator {
 
-    public static final String DEFAULT_FIELD_SEP = "\\001";
+    public static final char DEFAULT_FIELD_SEP = '\001';
 
     private final XmlParser parser;
     private final Map<String, FieldDescriptor> fieldTypes = new HashMap<>();
     private final String javaPackage;
     private final Path outDir;
     private final Path enumsDir;
-    private final String fieldSep;
+    private final char fieldSep;
 
     public ProtocolGenerator(String xmlIn) throws IOException, SAXException, ParserConfigurationException {
         parser = new XmlParser(xmlIn);
         javaPackage = System.getProperty("package", "org.sample");
-        fieldSep = System.getProperty("package", DEFAULT_FIELD_SEP);
+        fieldSep = DEFAULT_FIELD_SEP;
         final String userDir = System.getProperty("user.dir");
         final String outHome = System.getProperty("out.home", userDir + "/gen-src");
         outDir = Paths.get(outHome, javaPackage.replace(".", "/"));
@@ -204,6 +204,7 @@ public class ProtocolGenerator {
         });
 
         imports.add("com.mcscm.fixtools.FIXMessage");
+        imports.add("com.mcscm.fixtools.utils.EncodeUtils");
         imports.add("java.util.BitSet");
         imports.add("java.nio.ByteBuffer");
     }
@@ -213,10 +214,10 @@ public class ProtocolGenerator {
     }
 
     private void generateConstants(StringBuilder sb, Element node, String indent) {
-        sb.append(indent).append(String.format("    public static final byte[] SEP = \"%s\".getBytes();\n", fieldSep));
-        sb.append(indent).append("    public static final byte[] EQ = \"=\".getBytes();\n");
+        sb.append(indent).append(String.format("    public static final byte SEP = %d;\n", (byte) fieldSep));
+        sb.append(indent).append("    public static final byte EQ = 61;\n");
 
-//        forEach(node, 0, (f, i) -> f.appendFieldConstant(sb, indent + "    "));
+        forEach(node, 0, (f, i) -> f.appendFieldConstant(sb, indent + "    "));
 
         sb.append("\n");
     }
@@ -244,7 +245,7 @@ public class ProtocolGenerator {
     private void generateHasValues(StringBuilder sb, Element node, String indent) {
         forEach(node, 0, (f, i) ->
                 sb.append(format(
-                        indent + "public boolean has%s () {\n" +
+                        indent + "public boolean has%s() {\n" +
                                 indent + "    return parsed.get(%d);\n" +
                                 indent + "}\n\n",
                         f.name, i)));

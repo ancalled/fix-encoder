@@ -5,14 +5,26 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
 
-public class EncodeUtil {
+public class EncodeUtils {
 
-
-    public static void putAsString(ByteBuffer bb, int i) {
-        putAsString(bb, i, 0);
+    public static void put(ByteBuffer bb, String str) {
+        put(bb, str, 0);
     }
 
-    public static void putAsString(ByteBuffer bb, int i, int offset) {
+    public static void put(ByteBuffer bb, String str, int offset) {
+        for (int i = 0; i < str.length(); i++) {
+            char ch = str.charAt(i);
+            bb.put(offset + i, (byte) ch);
+        }
+    }
+
+
+
+    public static void put(ByteBuffer bb, int val) {
+        put(bb, val, 0);
+    }
+
+    public static void put(ByteBuffer bb, int i, int offset) {
 
         int index = (i < 0) ?
                 stringSize(-i) + 1
@@ -35,8 +47,6 @@ public class EncodeUtil {
             i = q;
             bb.put(offset + (--pos), DigitOnes[r]);
             bb.put(offset + (--pos), DigitTens[r]);
-//            buf[--pos] = DigitOnes[r];
-//            buf[--pos] = DigitTens[r];
         }
 
         // Fall thru to fast mode for smaller numbers
@@ -51,12 +61,11 @@ public class EncodeUtil {
         }
         if (sign != 0) {
             bb.put(offset + index - (--pos), sign);
-//            buf[--pos] = sign;
         }
     }
 
 
-    static void getBytes(int i, int index, byte[] buf) {
+    public static void getBytes(int i, int index, byte[] buf) {
         int q, r;
         int pos = index;
         byte sign = 0;
@@ -131,14 +140,16 @@ public class EncodeUtil {
             99999999, 999999999, Integer.MAX_VALUE};
 
     // Requires positive x
-    static int stringSize(int x) {
+    public static int stringSize(int x) {
         for (int i = 0; ; i++)
             if (x <= sizeTable[i])
                 return i + 1;
     }
 
 
-    public static void main(String[] args) {
+
+
+    public static void main1(String[] args) {
         int i = new Random().nextInt();
         System.out.println("i = " + i);
 
@@ -151,7 +162,7 @@ public class EncodeUtil {
         System.out.println(new String(bytes));
 
         ByteBuffer bb = ByteBuffer.allocateDirect(1024);
-        putAsString(bb, i);
+        put(bb, i);
 //        bb.put(bytes);
 
 //        bb.flip();
@@ -162,46 +173,8 @@ public class EncodeUtil {
     }
 
 
-    public static void main1(String[] args) {
-        String text = "123";
-        byte[] bytes = text.getBytes();
-        int size = bytes.length;
-
-//        ByteBuffer bb = ByteBuffer.allocateDirect(100);
-        ByteBuffer bb = ByteBuffer.allocate(100);
-//        bb.rewind();
-        int i = 0;
-
-//        System.out.print(bb.position());
-//        bb.position(size - i - 1);
-//        System.out.print(" -> " + bb.position() + " -> ");
-        System.out.println("i = " + (size - i - 1));
-        bb.put(size - i - 1, bytes[i++]);
-//        System.out.println(bb.position());
-
-//        bb.position(size - i - 1);
-//        System.out.print(" -> " + bb.position() + " -> ");
-        System.out.println("i = " + (size - i - 1));
-        bb.put(size - i - 1, bytes[i++]);
-//        System.out.println(bb.position());
-
-//        bb.position(size - i - 1);
-//        System.out.print(" -> " + bb.position() + " -> ");
-
-        System.out.println("i = " + (size - i - 1));
-        bb.put(size - i - 1, bytes[i++]);
-//        System.out.println(bb.position());
-
-//        bb.flip();
-
-
-//        byte[] res = new byte[size];
-//        bb.get(res);
-
-        System.out.println();
-//        System.out.println(Arrays.toString(res));
-        System.out.println(StandardCharsets.US_ASCII.decode(bb).toString());
-
+    public static void main(String[] args) {
+        System.out.println((byte) '=');
     }
 
 }
