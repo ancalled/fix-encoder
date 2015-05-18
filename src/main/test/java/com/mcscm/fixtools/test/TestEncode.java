@@ -113,7 +113,7 @@ public class TestEncode {
         expected.side = Side.BUY;
         expected.transactTime = new Date();
 
-        expected.encode2(bb);
+        expected.encode(bb);
         bb.flip();
 
         String text = StandardCharsets.US_ASCII.decode(bb).toString();
@@ -149,7 +149,7 @@ public class TestEncode {
         noMd1.mDEntrySize = 314511;
         exp.addNoMDEntries(noMd2);
 
-        exp.encode2(bb);
+        exp.encode(bb);
         bb.flip();
 
         String text = StandardCharsets.US_ASCII.decode(bb).toString();

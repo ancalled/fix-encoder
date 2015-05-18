@@ -2,6 +2,7 @@ package com.mcscm.fixtools.perf;
 
 import org.openjdk.jmh.annotations.*;
 import org.sample.MarketDataIncrementalRefresh;
+import org.sample.enums.MDBookType;
 import org.sample.enums.MDEntryType;
 import org.sample.enums.MDUpdateAction;
 
@@ -22,7 +23,7 @@ public class PerfTestJMH {
         final String mesToDecode;
 
         public MyState() {
-            mesToDecode = PerfTestJMH.encode(marketDataEncode);
+            mesToDecode = PerfTestJMH.encode_StringBuffer(marketDataEncode);
         }
     }
 
@@ -37,73 +38,48 @@ public class PerfTestJMH {
 
 
     @Benchmark
-    public String testEncode() {
+    public void testFill() {
         final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
-        return encode(marketData);
+        fill(marketData);
     }
 
     @Benchmark
-    public void testEncode2() {
+    public String testEncode_StringBuffer() {
+        final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
+        return encode_StringBuffer(marketData);
+    }
+
+    @Benchmark
+    public void testEncode_ByteBuffer() {
         final MarketDataIncrementalRefresh marketData = state.marketDataEncode;
         final ByteBuffer bb = this.bb;
         bb.clear();
 
-        encode2(marketData, bb);
+        encode_ByteBuffer(marketData, bb);
     }
 
 //    @Benchmark
-    public MarketDataIncrementalRefresh testDecode(/*final MyState state*/) {
+    public MarketDataIncrementalRefresh testDecode() {
         final String mesToDecode = state.mesToDecode;
         return decode(mesToDecode, state.marketDataDecode);
     }
 
-////    @Benchmark
-//    public MarketDataIncrementalRefresh testCreate() {
-//        final MarketDataIncrementalRefresh res = new MarketDataIncrementalRefresh();
-//        return res;
-//    }
-//
-////    @Benchmark
-//    public MarketDataIncrementalRefresh.NoMDEntries testCreateNoMDEntry() {
-//        final MarketDataIncrementalRefresh.NoMDEntries mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
-//        return mdIncGroup;
-//
-//    }
 
-    public static String encode(MarketDataIncrementalRefresh marketData) {
-        marketData.mDReqID = "1234";
-
-        MarketDataIncrementalRefresh.NoMDEntries mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
-//        mdIncGroup.securityID = "56789";
-        mdIncGroup.mDEntryPx = 50;
-//        mdIncGroup.mDEntrySize = 50;
-//        mdIncGroup.numberOfOrders = 1;
-        mdIncGroup.mDUpdateAction = MDUpdateAction.NEW;
-        mdIncGroup.mDEntryType = MDEntryType.BID;
-        if (marketData.noMDEntries == null || marketData.noMDEntries.size() < 2) {
-            marketData.addNoMDEntries(mdIncGroup);
-        } else {
-            marketData.noMDEntries.set(0, mdIncGroup);
-        }
-
-        mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
-//        mdIncGroup.securityID = "56789";
-        mdIncGroup.mDEntryPx = 50;
-//        mdIncGroup.mDEntrySize = 50;
-//        mdIncGroup.numberOfOrders = 1;
-        mdIncGroup.mDUpdateAction = MDUpdateAction.NEW;
-        mdIncGroup.mDEntryType = MDEntryType.OFFER;
-        if (marketData.noMDEntries == null || marketData.noMDEntries.size() < 2) {
-            marketData.addNoMDEntries(mdIncGroup);
-        } else {
-            marketData.noMDEntries.set(0, mdIncGroup);
-        }
+    public static String encode_StringBuffer(MarketDataIncrementalRefresh marketData) {
+        fill(marketData);
 
         return marketData.encode();
     }
 
-    public static void encode2(MarketDataIncrementalRefresh marketData, ByteBuffer bb) {
+    public static void encode_ByteBuffer(MarketDataIncrementalRefresh marketData, ByteBuffer bb) {
+        fill(marketData);
+        marketData.encode(bb);
+    }
+
+    private static void fill(MarketDataIncrementalRefresh marketData) {
         marketData.mDReqID = "1234";
+        marketData.mDBookType = MDBookType.TOP_OF_BOOK;
+        marketData.applQueueDepth = 5;
 
         MarketDataIncrementalRefresh.NoMDEntries mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
         mdIncGroup.securityID = "56789";
@@ -131,7 +107,6 @@ public class PerfTestJMH {
             marketData.noMDEntries.set(0, mdIncGroup);
         }
 
-        marketData.encode2(bb);
     }
 
 
@@ -154,13 +129,13 @@ public class PerfTestJMH {
         bench.init();
 
         for (int i = 0; i < 100000; i++) {
-            bench.testEncode2();
+            bench.testEncode_ByteBuffer();
         }
 
         long start = System.nanoTime();
         final int iterations = 1000000;
         for (int i = 0; i < iterations; i++) {
-            bench.testEncode2();
+            bench.testEncode_ByteBuffer();
         }
         long proc = System.nanoTime() - start;
         long op = proc / iterations;

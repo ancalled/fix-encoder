@@ -240,7 +240,7 @@ public class ProtocolGenerator {
         generatePropertiesAccess(sb, el, indent);
         generateHasValues(sb, el, indent);
         generateEncodeMethod(sb, el, indent);
-        generateEncode2Method(sb, el, indent);
+        generateEncodeBBMethod(sb, el, indent);
         generateDecodeMethod(sb, el, indent, className);
         sb.append("\n");
     }
@@ -269,9 +269,9 @@ public class ProtocolGenerator {
         sb.append(indent).append("}\n\n");
     }
 
-    private void generateEncode2Method(StringBuilder sb, Element node, String indent) {
+    private void generateEncodeBBMethod(StringBuilder sb, Element node, String indent) {
 
-        sb.append(indent).append("public void encode2(ByteBuffer buf) {\n");
+        sb.append(indent).append("public void encode(ByteBuffer buf) {\n");
 
         forEach(node, 0, (f, i) -> f.appendEncode2(sb, indent + "    "));
         sb.append("\n");

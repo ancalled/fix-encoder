@@ -139,6 +139,30 @@ public class EncodeUtils {
         return bytes;
     }
 
+    public static String getString(ByteBuffer bb, int offset, int length) {
+        bb.position(offset);
+        byte[] bytes = new byte[length];
+        bb.get(bytes);
+        return new String(bytes);
+//        return ""; //todo implement
+    }
+
+    public static int getInt(ByteBuffer bb, int offset, int length) {
+        bb.position(offset);
+        byte[] bytes = new byte[length];
+        bb.get(bytes);
+        return Integer.parseInt(new String(bytes));
+//        return 0; //todo implement
+    }
+
+    public static long getLong(ByteBuffer bb, int offset, int length) {
+        bb.position(offset);
+        byte[] bytes = new byte[length];
+        bb.get(bytes);
+        return Long.parseLong(new String(bytes));
+//        return 0; //todo implement
+    }
+
 
     public static void getBytes(int i, int index, byte[] buf) {
         int q, r;

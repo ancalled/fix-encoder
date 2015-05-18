@@ -1,5 +1,9 @@
 package com.mcscm.fixtools.generator;
 
+import com.mcscm.fixtools.utils.EncodeUtils;
+
+import java.util.Arrays;
+
 import static java.lang.String.format;
 
 public class FieldDescriptor {
@@ -50,7 +54,11 @@ public class FieldDescriptor {
 
     public void appendFieldConstant(StringBuilder sb, String indent) {
         sb.append(indent);
-        sb.append(String.format("public static final byte[] TAG_%S = \"%d\".getBytes();\n", name, tag));
+
+        String bytes = Arrays.toString(EncodeUtils.intToBytes(tag))
+                .replace("[", "{")
+                .replace("]", "}");
+        sb.append(String.format("public static final byte[] TAG_%S = %s; //%d\n", name, bytes, tag));
     }
 
     public void appendPropertyAccess(StringBuilder sb, String indent) {
@@ -174,8 +182,9 @@ public class FieldDescriptor {
 
         if (type == FieldType.NUMINGROUP) {
             sb.append(format(
+                    indent + "    buf.put(SEP);\n" +
                     indent + "    for (%s it: this.%s) {\n" +
-                            indent + "        it.encode2(buf);\n" +
+                            indent + "        it.encode(buf);\n" +
                             indent + "    }\n",
                     name, fieldName
             ));
