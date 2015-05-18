@@ -97,7 +97,7 @@ public class ProtocolGenerator {
         int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, indent + "    ", classname, javaPackage));
         System.out.printf("\tgenerated %d class properties\n", processed);
 
-        bodySb.append(indent).append("    private final BitSet parsed = new BitSet(").append(processed).append(");\n");
+        bodySb.append(indent).append("    public final BitSet parsed = new BitSet(").append(processed).append(");\n");
         bodySb.append("\n");
 
         generateMethods(bodySb, node, indent + "    ", classname);

@@ -11,75 +11,124 @@ import org.sample.enums.MDUpdateAction;
 
 import java.nio.ByteBuffer;
 
-import static com.mcscm.fixtools.test.DecodeTest.DecodeState.KEY;
-import static com.mcscm.fixtools.test.DecodeTest.DecodeState.VALUE;
-import static com.mcscm.fixtools.utils.EncodeUtils.getInt;
-import static com.mcscm.fixtools.utils.EncodeUtils.getLong;
-import static com.mcscm.fixtools.utils.EncodeUtils.getString;
+import static com.mcscm.fixtools.test.DecodeTest.DecodeState.ERROR_ACCURED;
+import static com.mcscm.fixtools.test.DecodeTest.DecodeState.KEY_PARSING;
+import static com.mcscm.fixtools.test.DecodeTest.DecodeState.VALUE_PARSING;
+import static com.mcscm.fixtools.utils.EncodeUtils.*;
 import static org.sample.MarketDataIncrementalRefresh.*;
 
 public class DecodeTest {
 
     public static final RadixTree<FieldDecoder<MarketDataIncrementalRefresh>> MD_TAGS_TREE = new RadixTree<>();
+
     static {
-        MD_TAGS_TREE.add(TAG_APPLQUEUEDEPTH, (bb, o, l, md) -> {
-            md.applQueueDepth = getInt(bb, o, l);
+        MD_TAGS_TREE.add(TAG_MDREQID, (bb, o, l, mes) -> {
+            if (mes.parsed.get(0)) return -1;
+            mes.mDReqID = getString(bb, o, l);
+            mes.parsed.set(0);
             return o + l + 1;
         });
-        MD_TAGS_TREE.add(TAG_APPLQUEUERESOLUTION, (bb, o, l, md) -> {
-            md.applQueueResolution = ApplQueueResolution.getByValue(getInt(bb, o, l));
-            return o + l + 1;
-        });
-        MD_TAGS_TREE.add(TAG_MDREQID, (bb, o, l, md) -> {
-            md.mDReqID = getString(bb, o, l);
-            return o + l + 1;
-        });
-        MD_TAGS_TREE.add(TAG_NOMDENTRIES, (bb, o, l, md) -> {
+        MD_TAGS_TREE.add(TAG_NOMDENTRIES, (bb, o, l, mes) -> {
+            if (mes.parsed.get(1)) return -1;
+
             int size = getInt(bb, o, l);
-            NoMDEntries item = new NoMDEntries();
-            md.addNoMDEntries(item);
-            int enfOffset = o + l + 1;
+            int offset = o + l + 1;
+
             for (int i = 0; i < size; i++) {
-                enfOffset = decode(bb, enfOffset, item);
+                NoMDEntries item = new NoMDEntries();
+                mes.addNoMDEntries(item);
+                offset = decode(bb, offset, item);
             }
 
-            return enfOffset;
+            mes.parsed.set(1);
+
+            return offset;
         });
-        MD_TAGS_TREE.add(TAG_MDBOOKTYPE, (bb, o, l, md) -> {
-            md.mDBookType = MDBookType.getByValue(getInt(bb, o, l));
+        MD_TAGS_TREE.add(TAG_APPLQUEUEDEPTH, (bb, o, l, mes) -> {
+            if (mes.parsed.get(2)) return -1;
+
+            mes.applQueueDepth = getInt(bb, o, l);
+            mes.parsed.set(2);
+
+            return o + l + 1;
+        });
+        MD_TAGS_TREE.add(TAG_APPLQUEUERESOLUTION, (bb, o, l, mes) -> {
+            if (mes.parsed.get(3)) return -1;
+
+            mes.applQueueResolution = ApplQueueResolution.getByValue(getInt(bb, o, l));
+            mes.parsed.set(3);
+
+            return o + l + 1;
+        });
+
+        MD_TAGS_TREE.add(TAG_MDBOOKTYPE, (bb, o, l, mes) -> {
+            if (mes.parsed.get(4)) return -1;
+
+            mes.mDBookType = MDBookType.getByValue(getInt(bb, o, l));
+            mes.parsed.set(4);
+
             return o + l + 1;
         });
     }
 
 
     public static final RadixTree<FieldDecoder<NoMDEntries>> NOMD_TAGS_TREE = new RadixTree<>();
+
     static {
-        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDUPDATEACTION, (bb, o, l, md) -> {
-            md.mDUpdateAction = MDUpdateAction.getByValue(getString(bb, o, l).charAt(0));
+        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDUPDATEACTION, (bb, o, l, mes) -> {
+            if (mes.parsed.get(0)) return -1;
+
+            mes.mDUpdateAction = MDUpdateAction.getByValue(getString(bb, o, l).charAt(0));
+            mes.parsed.set(0);
+
             return o + l + 1;
         });
-        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDENTRYTYPE, (bb, o, l, md) -> {
-            md.mDEntryType = MDEntryType.getByValue(getString(bb, o, l).charAt(0));
+        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDENTRYTYPE, (bb, o, l, mes) -> {
+            if (mes.parsed.get(1)) return -1;
+
+            mes.mDEntryType = MDEntryType.getByValue(getString(bb, o, l).charAt(0));
+            mes.parsed.set(1);
+
             return o + l + 1;
         });
-        NOMD_TAGS_TREE.add(NoMDEntries.TAG_SYMBOL, (bb, o, l, md) -> {
-            md.symbol = getString(bb, o, l);
+        NOMD_TAGS_TREE.add(NoMDEntries.TAG_SYMBOL, (bb, o, l, mes) -> {
+            if (mes.parsed.get(2)) return -1;
+
+            mes.symbol = getString(bb, o, l);
+            mes.parsed.set(2);
+
             return o + l + 1;
         });
-        NOMD_TAGS_TREE.add(NoMDEntries.TAG_SECURITYID, (bb, o, l, md) -> {
-            md.securityID = getString(bb, o, l);
+        NOMD_TAGS_TREE.add(NoMDEntries.TAG_SECURITYID, (bb, o, l, mes) -> {
+            if (mes.parsed.get(3)) return -1;
+
+            mes.securityID = getString(bb, o, l);
+            mes.parsed.set(3);
+
             return o + l + 1;
         });
-        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDENTRYPX, (bb, o, l, md) -> {
-            md.mDEntryPx = getLong(bb, o, l);
+        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDENTRYPX, (bb, o, l, mes) -> {
+            if (mes.parsed.get(4)) return -1;
+
+            mes.mDEntryPx = getLong(bb, o, l);
+            mes.parsed.set(4);
+
             return o + l + 1;
         });
-        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDENTRYSIZE, (bb, o, l, md) -> {
-            md.mDEntrySize = getLong(bb, o, l);
+        NOMD_TAGS_TREE.add(NoMDEntries.TAG_MDENTRYSIZE, (bb, o, l, mes) -> {
+            if (mes.parsed.get(5)) return -1;
+
+            mes.mDEntrySize = getLong(bb, o, l);
+            mes.parsed.set(5);
+
             return o + l + 1;
         });
-        NOMD_TAGS_TREE.add(NoMDEntries.TAG_NUMBEROFORDERS, (bb, o, l, md) -> {
-            md.numberOfOrders = getInt(bb, o, l);
+        NOMD_TAGS_TREE.add(NoMDEntries.TAG_NUMBEROFORDERS, (bb, o, l, mes) -> {
+            if (mes.parsed.get(6)) return -1;
+
+            mes.numberOfOrders = getInt(bb, o, l);
+            mes.parsed.set(6);
+
             return o + l + 1;
         });
     }
@@ -91,85 +140,96 @@ public class DecodeTest {
 
     }
 
-    enum DecodeState {KEY, VALUE, SKIP}
+    enum DecodeState {KEY_PARSING, VALUE_PARSING, ERROR_ACCURED}
 
-    public static int decode(ByteBuffer bb, int offset, MarketDataIncrementalRefresh marketData) {
+    public static int decode(ByteBuffer bb, int offset, MarketDataIncrementalRefresh message) {
 
-        DecodeState st = KEY;
+        DecodeState state = KEY_PARSING;
         RadixTree.Node<FieldDecoder<MarketDataIncrementalRefresh>> search = MD_TAGS_TREE.root;
 
-        int pieceStart = offset;
-        int pos = offset;
+        int startPos = offset;
+        int eqPos = startPos;
+        int curr = startPos;
 
         for (; ; ) {
             if (bb.position() >= bb.capacity()) break;
-            byte b = bb.get(pos++);
+            byte b = bb.get(curr++);
 
             if (b == SEP) {
-                if (search.value != null) {
-                    pos = search.value.decode(bb, pieceStart, pos - pieceStart - 1, marketData);
+                if (search.value == null) {
+                    state = ERROR_ACCURED;
+                    return -1;
                 }
 
+                int res = search.value.decode(bb, eqPos, curr - eqPos - 1, message);
+                if (res < 0) return startPos;
+
                 search = MD_TAGS_TREE.root;
-                st = KEY;
-                pieceStart = pos;
+                state = KEY_PARSING;
+                startPos = res;
+                curr = startPos;
                 continue;
 
             } else if (b == EQ) {
-                st = VALUE;
-                pieceStart = pos;
+                state = VALUE_PARSING;
+                eqPos = curr;
                 continue;
             }
 
-            if (st == KEY) {
+            if (state == KEY_PARSING) {
                 search = search.find(b);
                 if (search == null) {
-                    return pieceStart;
+                    return startPos;
                 }
             }
         }
 
-        return pos;
+        return curr;
     }
 
 
-    public static int decode(ByteBuffer bb, int offset, NoMDEntries noMDEntries) {
+    public static int decode(ByteBuffer bb, int offset, NoMDEntries message) {
 
-        DecodeState st = KEY;
+        DecodeState state = KEY_PARSING;
         RadixTree.Node<FieldDecoder<NoMDEntries>> search = NOMD_TAGS_TREE.root;
 
-        int pieceStart = offset;
-        int pos = offset;
+        int startPos = offset;
+        int eqPos = startPos;
+        int curr = startPos;
 
         for (; ; ) {
             if (bb.position() >= bb.capacity()) break;
-            byte b = bb.get(pos++);
+            byte b = bb.get(curr++);
 
             if (b == SEP) {
-                if (search.value != null) {
-                    pos = search.value.decode(bb, pieceStart, pos - pieceStart - 1, noMDEntries);
+                if (search.value == null) {
+                    state = ERROR_ACCURED;
+                    return -1;
                 }
+                int res = search.value.decode(bb, eqPos, curr - eqPos - 1, message);
+                if (res < 0) return startPos;
 
                 search = NOMD_TAGS_TREE.root;
-                st = KEY;
-                pieceStart = pos;
+                state = KEY_PARSING;
+                startPos = res;
+                curr = startPos;
                 continue;
 
             } else if (b == EQ) {
-                st = VALUE;
-                pieceStart = pos;
+                state = VALUE_PARSING;
+                eqPos = curr;
                 continue;
             }
 
-            if (st == KEY) {
+            if (state == KEY_PARSING) {
                 search = search.find(b);
                 if (search == null) {
-                    return pieceStart;
+                    return startPos;
                 }
             }
         }
 
-        return pos;
+        return curr;
     }
 
     public static void main(String[] args) {
@@ -182,6 +242,8 @@ public class DecodeTest {
 
         MarketDataIncrementalRefresh decode = new MarketDataIncrementalRefresh();
         decode(bb, 0, decode);
+
+        System.out.println(decode);
     }
 
 
