@@ -25,7 +25,7 @@
             <field name="ApplQueueDepth" required="N"/>
             <field name="ApplQueueResolution" required="N"/>
             <field name="MDBookType" required="N"/>
-            <field name="MDFeedType" required="N"/>
+
             <!--<field name="TradeDate" required="N"/>-->
             <!--<component name="RoutingGrp" required="N"/>-->
         </message>
@@ -39,7 +39,10 @@
             <group name="NoMDEntries" required="Y">
                 <field name="MDUpdateAction" required="Y"/>
                 <field name="MDEntryType" required="N"/>
+                <component name="Instrument"/>
                 <field name="MDEntryPx" required="N"/>
+                <field name="MDEntrySize" required="N"/>
+                <field name="NumberOfOrders" required="N"/>
             </group>
         </component>
 
@@ -122,6 +125,7 @@
             <value enum="Q" description="AUCTION_CLEARING_PRICE"/>
         </field>
         <field number="270" name="MDEntryPx" type="PRICE"/>
+        <field number="271" name="MDEntrySize" type="QTY"/>
         <field number="279" name="MDUpdateAction" type="CHAR">
             <value enum="0" description="NEW"/>
             <value enum="1" description="CHANGE"/>
@@ -129,7 +133,7 @@
             <value enum="3" description="DELETE_THRU"/>
             <value enum="4" description="DELETE_FROM"/>
         </field>
-
+        <field number="346" name="NumberOfOrders" type="INT"/>
         <field number="813" name="ApplQueueDepth" type="INT"/>
         <field number="814" name="ApplQueueResolution" type="INT">
             <value enum="0" description="NO_ACTION_TAKEN"/>

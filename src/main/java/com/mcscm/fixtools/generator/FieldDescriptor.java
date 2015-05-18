@@ -117,46 +117,48 @@ public class FieldDescriptor {
                 fieldName, nullValue));
 
         String mthd = "";
-        switch (type.javaType) {
-            case "String":
+        if (enumField) {
+             mthd = "buf.put(" + fieldName + ".bytes)";
+        } else {
+            switch (type.javaType) {
+                case "String":
 //                mthd = "buf.put(%s.getBytes())";
-                mthd = "EncodeUtils.put(buf, %s)";
-                break;
-            case "int":
-            case "List":
-//                mthd = "buf.put(Integer.toString(%s).getBytes())";
-                mthd = "EncodeUtils.put(buf, %s)";
-                break;
-            case "long":
-                mthd = "buf.put(Long.toString(%s).getBytes())";
-                break;
-            case "double":
-                mthd = "buf.put(Double.toString(%s).getBytes())";
-                break;
-            case "char":
-                mthd = "buf.put(Character.toString(%s).getBytes())";
-                break;
-            case "boolean":
-                mthd = "buf.put(Boolean.toString(%s).getBytes())";
-                break;
-            case "Date":
-                if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
-                    mthd = "buf.put(DateFormatter.formatAsDateTime(%s).getBytes())";
+                    mthd = "EncodeUtils.put(buf, %s)";
+                    break;
+                case "int":
+                case "List":
+                    mthd = "EncodeUtils.put(buf, %s)";
+                    break;
+                case "long":
+//                    mthd = "buf.put(Long.toString(%s).getBytes())";
+                    mthd = "EncodeUtils.put(buf, %s)";
+                    break;
+                case "double":
+                    mthd = "EncodeUtils.put(buf, Double.toString(%s))";
+                    break;
+                case "char":
+                    mthd = "EncodeUtils.put(buf, Character.toString(%s))";
+                    break;
+                case "boolean":
+                    mthd = "buf.put(Boolean.toString(%s).getBytes())";
+                    break;
+                case "Date":
+                    if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
+                        mthd = "EncodeUtils.put(buf, DateFormatter.formatAsDateTime(%s))";
 
-                } else if (type == FieldType.UTCDATE || type == FieldType.UTCDATEONLY || type == FieldType.LOCALMKTDATE) {
-                    mthd = "buf.put(DateFormatter.formatAsDate(%s).getBytes())";
+                    } else if (type == FieldType.UTCDATE || type == FieldType.UTCDATEONLY || type == FieldType.LOCALMKTDATE) {
+                        mthd = "EncodeUtils.put(buf, DateFormatter.formatAsDate(%s))";
 
-                } else if (type == FieldType.UTCTIMEONLY || type == FieldType.TIME || type == FieldType.TZTIMEONLY) {
-                    mthd = "buf.put(DateFormatter.formatAsTime(%s).getBytes())";
-                }
-                break;
+                    } else if (type == FieldType.UTCTIMEONLY || type == FieldType.TIME || type == FieldType.TZTIMEONLY) {
+                        mthd = "EncodeUtils.put(buf, DateFormatter.formatAsTime(%s))";
+                    }
+                    break;
+            }
         }
 
         String arg;
         if (type == FieldType.NUMINGROUP) {
             arg = fieldName + ".size()";
-        } else if (enumField) {
-            arg = fieldName + ".value";
         } else {
             arg = fieldName;
         }

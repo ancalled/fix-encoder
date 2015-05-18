@@ -106,10 +106,10 @@ public class PerfTestJMH {
         marketData.mDReqID = "1234";
 
         MarketDataIncrementalRefresh.NoMDEntries mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
-//        mdIncGroup.securityID = "56789";
-        mdIncGroup.mDEntryPx = 50;
-//        mdIncGroup.mDEntrySize = 50;
-//        mdIncGroup.numberOfOrders = 1;
+        mdIncGroup.securityID = "56789";
+//        mdIncGroup.mDEntryPx = 50;
+        mdIncGroup.mDEntrySize = 50;
+        mdIncGroup.numberOfOrders = 1;
         mdIncGroup.mDUpdateAction = MDUpdateAction.NEW;
         mdIncGroup.mDEntryType = MDEntryType.BID;
         if (marketData.noMDEntries == null || marketData.noMDEntries.size() < 2) {
@@ -119,10 +119,10 @@ public class PerfTestJMH {
         }
 
         mdIncGroup = new MarketDataIncrementalRefresh.NoMDEntries();
-//        mdIncGroup.securityID = "56789";
-        mdIncGroup.mDEntryPx = 50;
-//        mdIncGroup.mDEntrySize = 50;
-//        mdIncGroup.numberOfOrders = 1;
+        mdIncGroup.securityID = "56789";
+//        mdIncGroup.mDEntryPx = 50;
+        mdIncGroup.mDEntrySize = 50;
+        mdIncGroup.numberOfOrders = 1;
         mdIncGroup.mDUpdateAction = MDUpdateAction.NEW;
         mdIncGroup.mDEntryType = MDEntryType.OFFER;
         if (marketData.noMDEntries == null || marketData.noMDEntries.size() < 2) {

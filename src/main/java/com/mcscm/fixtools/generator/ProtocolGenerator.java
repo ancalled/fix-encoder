@@ -151,6 +151,12 @@ public class ProtocolGenerator {
             sb.append(e.code);
             if (charType) sb.append("'");
             if (stringType) sb.append("\"");
+
+            sb.append(", new byte[]");
+            String bytes = Arrays.toString(e.code.getBytes())
+                    .replace("[", "{")
+                    .replace("]", "}");
+            sb.append(bytes);
             sb.append(")");
             sb.append(",\n");
         }
@@ -158,10 +164,11 @@ public class ProtocolGenerator {
         sb.append(";\n");
 
         sb.append(format(
-                indent + "public %s value;\n\n" +
-
-                        indent + "%s(%s value) {\n" +
+                indent + "public final %s value;\n" +
+                indent + "public final byte[] bytes;\n\n" +
+                        indent + "%s(%s value, byte[] bytes) {\n" +
                         indent + "    this.value = value;\n" +
+                        indent + "    this.bytes = bytes;\n" +
                         indent + "}\n\n",
                 javaType, name, javaType
         ));
