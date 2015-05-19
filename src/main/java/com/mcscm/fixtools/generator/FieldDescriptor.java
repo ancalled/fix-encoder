@@ -215,7 +215,7 @@ public class FieldDescriptor {
             case "long":
                 return "CodeUtils.getLong(%s, %s, %s)";
             case "double":
-                return "CodeUtils.getLong(%s, %s, %s)";
+                return "CodeUtils.getDouble(%s, %s, %s)";
             case "char":
                 return "CodeUtils.getChar(%s, %s, %s)";
             case "boolean":

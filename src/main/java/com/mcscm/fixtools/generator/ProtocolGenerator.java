@@ -396,50 +396,50 @@ public class ProtocolGenerator {
         sb.append(String.format(
                 indent + "enum DecodeState {KEY_PARSING, VALUE_PARSING, ERROR_ACCURED}\n\n" +
 
-                indent + "public int decode(ByteBuffer bb, int offset) {\n\n" +
+                        indent + "public int decode(ByteBuffer bb, int offset) {\n\n" +
 
-                indent + "    DecodeState state = DecodeState.KEY_PARSING;\n" +
-                indent + "    RadixTree.Node<FieldDecoder<%s>> search = TAGS_TREE.root;\n\n" +
+                        indent + "    DecodeState state = DecodeState.KEY_PARSING;\n" +
+                        indent + "    RadixTree.Node<FieldDecoder<%s>> search = TAGS_TREE.root;\n\n" +
 
-                indent + "    int startPos = offset;\n" +
-                indent + "    int eqPos = startPos;\n" +
-                indent + "    int curr = startPos;\n\n" +
+                        indent + "    int startPos = offset;\n" +
+                        indent + "    int eqPos = startPos;\n" +
+                        indent + "    int curr = startPos;\n\n" +
 
-                indent + "    for (; ; ) {\n" +
-                indent + "        if (bb.position() >= bb.capacity()) break;\n" +
-                indent + "        byte b = bb.get(curr++);\n\n" +
+                        indent + "    for (; ; ) {\n" +
+                        indent + "        if (curr >= bb.limit()) break;\n" +
+                        indent + "        byte b = bb.get(curr++);\n\n" +
 
-                indent + "        if (b == SEP) {\n" +
-                indent + "            if (search.value == null) {\n" +
-                indent + "                state = DecodeState.ERROR_ACCURED;\n" +
-                indent + "                return -1;\n" +
-                indent + "            }\n\n" +
+                        indent + "        if (b == SEP) {\n" +
+                        indent + "            if (search.get() == null) {\n" +
+                        indent + "                state = DecodeState.ERROR_ACCURED;\n" +
+                        indent + "                return -1;\n" +
+                        indent + "            }\n\n" +
 
-                indent + "            int res = search.value.decode(bb, eqPos, curr - eqPos - 1, this);\n" +
-                indent + "            if (res < 0) return startPos;\n\n" +
+                        indent + "            int res = search.get().decode(bb, eqPos, curr - eqPos - 1, this);\n" +
+                        indent + "            if (res < 0) return startPos;\n\n" +
 
-                indent + "            search = TAGS_TREE.root;\n" +
-                indent + "            state = DecodeState.KEY_PARSING;\n" +
-                indent + "            startPos = res;\n" +
-                indent + "            curr = startPos;\n" +
-                indent + "            continue;\n\n" +
+                        indent + "            search = TAGS_TREE.root;\n" +
+                        indent + "            state = DecodeState.KEY_PARSING;\n" +
+                        indent + "            startPos = res;\n" +
+                        indent + "            curr = startPos;\n" +
+                        indent + "            continue;\n\n" +
 
-                indent + "        } else if (b == EQ) {\n" +
-                indent + "            state = DecodeState.VALUE_PARSING;\n" +
-                indent + "            eqPos = curr;\n" +
-                indent + "            continue;\n" +
-                indent + "        }\n\n" +
+                        indent + "        } else if (b == EQ) {\n" +
+                        indent + "            state = DecodeState.VALUE_PARSING;\n" +
+                        indent + "            eqPos = curr;\n" +
+                        indent + "            continue;\n" +
+                        indent + "        }\n\n" +
 
-                indent + "        if (state == DecodeState.KEY_PARSING) {\n" +
-                indent + "            search = search.find(b);\n" +
-                indent + "            if (search == null) {\n" +
-                indent + "                return startPos;\n" +
-                indent + "            }\n" +
-                indent + "        }\n" +
-                indent + "    }\n\n" +
+                        indent + "        if (state == DecodeState.KEY_PARSING) {\n" +
+                        indent + "            search = search.find(b);\n" +
+                        indent + "            if (search == null) {\n" +
+                        indent + "                return startPos;\n" +
+                        indent + "            }\n" +
+                        indent + "        }\n" +
+                        indent + "    }\n\n" +
 
-                indent + "    return curr;\n" +
-                indent + "}\n"
+                        indent + "    return curr;\n" +
+                        indent + "}\n"
                 , className
         ));
     }

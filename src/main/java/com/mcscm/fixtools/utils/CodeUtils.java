@@ -164,11 +164,19 @@ public class CodeUtils {
 //        return 0; //todo implement
     }
 
+    public static double getDouble(ByteBuffer bb, int offset, int length) {
+        bb.position(offset);
+        byte[] bytes = new byte[length];
+        bb.get(bytes);
+        return Double.parseDouble(new String(bytes));
+//        return 0; //todo implement
+    }
+
 
     public static char getChar(ByteBuffer bb, int offset, int length) {
         bb.position(offset);
-        return bb.getChar();
-//        return 0; //todo implement
+        return (char) bb.get();
+//        return 0;  //todo implement
     }
 
 

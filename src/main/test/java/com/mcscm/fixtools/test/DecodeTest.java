@@ -150,12 +150,12 @@ public class DecodeTest {
             byte b = bb.get(curr++);
 
             if (b == SEP) {
-                if (search.value == null) {
+                if (search.get() == null) {
                     state = ERROR_ACCURED;
                     return -1;
                 }
 
-                int res = search.value.decode(bb, eqPos, curr - eqPos - 1, message);
+                int res = search.get().decode(bb, eqPos, curr - eqPos - 1, message);
                 if (res < 0) return startPos;
 
                 search = TAGS_TREE.root;
@@ -196,11 +196,11 @@ public class DecodeTest {
             byte b = bb.get(curr++);
 
             if (b == SEP) {
-                if (search.value == null) {
+                if (search.get() == null) {
                     state = ERROR_ACCURED;
                     return -1;
                 }
-                int res = search.value.decode(bb, eqPos, curr - eqPos - 1, message);
+                int res = search.get().decode(bb, eqPos, curr - eqPos - 1, message);
                 if (res < 0) return startPos;
 
                 search = NOMD_TAGS_TREE.root;

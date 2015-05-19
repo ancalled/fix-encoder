@@ -1,5 +1,6 @@
 package com.mcscm.fixtools.test;
 
+import com.mcscm.fixtools.DateFormatter;
 import com.mcscm.fixtools.FIXUtils;
 import org.junit.Test;
 import org.sample.*;
@@ -133,7 +134,8 @@ public class TestEncode {
         assertEquals(expected.price, decoded.price, DELTA);
         assertEquals(expected.cumQty, decoded.cumQty);
         assertEquals(expected.side, decoded.side);
-        assertEquals(expected.transactTime, decoded.transactTime);
+        assertEquals(DateFormatter.formatAsDateTime(expected.transactTime),
+                DateFormatter.formatAsDateTime(decoded.transactTime));
 
     }
 
