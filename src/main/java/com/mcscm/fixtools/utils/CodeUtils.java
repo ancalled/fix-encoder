@@ -293,7 +293,10 @@ public class CodeUtils {
 
     //  ----------------------------------------------------
 
-    public static FIXMessage decodeMessage(ByteBuffer bb, int offset, MessageHeader header, MessageTrailer trailer, MessageFactory factory) {
+    public static FIXMessage decodeMessage(ByteBuffer bb, int offset,
+                                           MessageHeader header,
+                                           MessageTrailer trailer,
+                                           MessageFactory factory) {
         if (header == null || factory == null) return null;
 
         int start = offset;
@@ -313,7 +316,10 @@ public class CodeUtils {
         return message;
     }
 
-    public static void encodeMessage(ByteBuffer bb, int offset, FIXMessage mes, MessageHeader header, MessageTrailer trailer) {
+    public static void encodeMessage(ByteBuffer bb, int offset,
+                                     FIXMessage mes,
+                                     MessageHeader header,
+                                     MessageTrailer trailer) {
         bb.position(offset);
         header.msgType = mes.getType();
 //        header.bodyLength = //todo calc body length

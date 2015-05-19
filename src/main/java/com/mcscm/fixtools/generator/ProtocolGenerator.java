@@ -134,7 +134,7 @@ public class ProtocolGenerator {
         NodeList nodes = eval("/fix/messages/message");
 
         StringBuilder sb = new StringBuilder();
-        final String className = "CustomFIXFactory";
+        final String className = "FIXMessageFactory";
         sb.append(String.format(
                 "package %s;\n" +
 

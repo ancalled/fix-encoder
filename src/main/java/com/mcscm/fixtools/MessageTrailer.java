@@ -11,10 +11,9 @@ public class MessageTrailer {
 
     public static final byte SEP = 1;
     public static final byte EQ = 61;
+    public static final byte ZERO = 48;
 
     public static final byte[] TAG_CHECKSUM = {49, 48}; //10
-
-
 
     public static final RadixTree<FieldDecoder<MessageTrailer>> TAGS_TREE = new RadixTree<>();
 
@@ -38,10 +37,10 @@ public class MessageTrailer {
             buf.put(TAG_CHECKSUM);
             buf.put(EQ);
             if (checkSum < 100) {
-                buf.put((byte) '0');
+                buf.put(ZERO);
             }
             if (checkSum < 10) {
-                buf.put((byte) '0');
+                buf.put(ZERO);
             }
             CodeUtils.put(buf, checkSum);
             buf.put(SEP);
@@ -92,6 +91,7 @@ public class MessageTrailer {
 
         return curr;
     }
+
 
 
 }
