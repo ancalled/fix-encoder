@@ -316,7 +316,7 @@ public class ProtocolGenerator {
 
         sb.append(indent).append("public void encode(ByteBuffer buf) {\n");
 
-        forEach(node, 0, (f, i) -> f.appendEncode2(sb, indent + "    "));
+        forEach(node, 0, (f, i) -> f.appendEncodeBB(sb, indent + "    "));
         sb.append("\n");
 
         sb.append(indent).append("}\n\n");

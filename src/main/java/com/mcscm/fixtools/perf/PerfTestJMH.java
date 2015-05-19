@@ -1,5 +1,6 @@
 package com.mcscm.fixtools.perf;
 
+import com.mcscm.fixtools.utils.CodeUtils;
 import org.openjdk.jmh.annotations.*;
 import org.sample.MarketDataIncrementalRefresh;
 import org.sample.enums.MDBookType;
@@ -152,21 +153,51 @@ public class PerfTestJMH {
         PerfTestJMH bench = new PerfTestJMH();
         bench.init();
 
+        System.out.println(CodeUtils.toString(bench.state.decodeBuffer));
+        bench.state.decodeBuffer.flip();
 
         MarketDataIncrementalRefresh mdInc = new MarketDataIncrementalRefresh();
         bench.decode(bench.state.decodeBuffer, mdInc);
-//        for (int i = 0; i < 100000; i++) {
-//            bench.testDecode_ByteBuffer();
-//        }
-//
-//        long start = System.nanoTime();
-//        final int iterations = 1000000;
-//        for (int i = 0; i < iterations; i++) {
-//            bench.testEncode_ByteBuffer();
-//        }
-//        long proc = System.nanoTime() - start;
-//        long op = proc / iterations;
-//        System.out.println("Encode nanos " + op);
+        System.out.println();
+
+        System.out.println("mDReqID: " + mdInc.mDReqID);
+        System.out.println("mDBookType: " + mdInc.mDBookType);
+        System.out.println("noMd[0].mDUpdateAction: " + mdInc.noMDEntries.get(0).mDUpdateAction);
+        System.out.println("noMd[0].mDEntryType: " + mdInc.noMDEntries.get(0).mDEntryType);
+        System.out.println("noMd[0].securityID: " + mdInc.noMDEntries.get(0).securityID);
+        System.out.println("noMd[0].symbol: " + mdInc.noMDEntries.get(0).symbol);
+        System.out.println("noMd[0].mDEntryPx: " + mdInc.noMDEntries.get(0).mDEntryPx);
+        System.out.println("noMd[0].mDEntrySize: " + mdInc.noMDEntries.get(0).mDEntrySize);
+        System.out.println("noMd[0].numberOfOrders: " + mdInc.noMDEntries.get(0).numberOfOrders);
+
+        System.out.println("noMd[1].mDUpdateAction: " + mdInc.noMDEntries.get(1).mDUpdateAction);
+        System.out.println("noMd[1].mDEntryType: " + mdInc.noMDEntries.get(1).mDEntryType);
+        System.out.println("noMd[1].securityID: " + mdInc.noMDEntries.get(1).securityID);
+        System.out.println("noMd[1].symbol: " + mdInc.noMDEntries.get(1).symbol);
+        System.out.println("noMd[1].mDEntryPx: " + mdInc.noMDEntries.get(1).mDEntryPx);
+        System.out.println("noMd[1].mDEntrySize: " + mdInc.noMDEntries.get(1).mDEntrySize);
+        System.out.println("noMd[1].numberOfOrders: " + mdInc.noMDEntries.get(1).numberOfOrders);
+
+        long tst = 0;
+
+        for (int i = 0; i < 100000; i++) {
+            mdInc = bench.testDecode_ByteBuffer();
+            tst += mdInc.noMDEntries.get(0).mDEntrySize;
+            tst += mdInc.noMDEntries.get(1).mDEntrySize;
+        }
+
+        tst = 0;
+        long start = System.nanoTime();
+        final int iterations = 1000000;
+        for (int i = 0; i < iterations; i++) {
+            mdInc = bench.testDecode_ByteBuffer();
+            tst += mdInc.noMDEntries.get(0).mDEntrySize;
+            tst += mdInc.noMDEntries.get(1).mDEntrySize;
+        }
+        long proc = System.nanoTime() - start;
+        long op = proc / iterations;
+        System.out.println("Process nanos " + op);
+        System.out.println("tst = " + tst);
 
     }
 

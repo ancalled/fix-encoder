@@ -118,7 +118,7 @@ public class FieldDescriptor {
     }
 
 
-    public void appendEncode2(StringBuilder sb, String indent) {
+    public void appendEncodeBB(StringBuilder sb, String indent) {
         String nullValue = enumField ? "null" : type.nullValue;
         sb.append(format(
                 indent + "if (%s != %s) {\n",
@@ -185,12 +185,13 @@ public class FieldDescriptor {
                     indent + "    buf.put(SEP);\n" +
                             indent + "    for (%s it: this.%s) {\n" +
                             indent + "        it.encode(buf);\n" +
-                            indent + "    }\n",
-                    name, fieldName
+                            indent + "    }\n" +
+                            indent + "    if (this.%s.isEmpty()) buf.put(SEP);\n"
+                    , name, fieldName, fieldName
             ));
+        } else {
+            sb.append(indent).append("    buf.put(SEP);\n");
         }
-
-        sb.append(indent).append("    buf.put(SEP);\n");
         sb.append(indent).append("}\n");
     }
 
@@ -199,14 +200,14 @@ public class FieldDescriptor {
         String decode = String.format(decodeSimple(), bufParam, offsetParam, lengthParam);
 
         if (enumField) {
-           return name + ".getByValue(" + decode + ")";
+            return name + ".getByValue(" + decode + ")";
         } else {
             return decode;
         }
     }
 
     private String decodeSimple() {
-          switch (type.javaType) {
+        switch (type.javaType) {
             case "String":
                 return "CodeUtils.getString(%s, %s, %s)";
             case "int":
@@ -234,8 +235,6 @@ public class FieldDescriptor {
         }
         return "";
     }
-
-
 
 
 }
