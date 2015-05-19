@@ -327,11 +327,11 @@ public class ProtocolGenerator {
 
         final String msgtype = el.getAttribute("msgtype");
         sb.append(format(
-//                indent + "public static String getType() {\n" +
-//                        indent + "    return \"%s\";\n" +
-//                        indent + "}\n\n" +
+                indent + "public String getType() {\n" +
+                        indent + "    return \"%s\";\n" +
+                        indent + "}\n\n" +
 //
-//                        indent + "public static byte[] getTypeBytes() {\n" +
+//                        indent + "public byte[] getTypeBytes() {\n" +
 //                        indent + "    return MSG_TYPE;\n" +
 //                        indent + "}\n\n" +
 
@@ -482,7 +482,7 @@ public class ProtocolGenerator {
                         indent + "            if (search.get() == null) {\n" +
                         indent + "                state = DecodeState.ERROR_ACCURED;\n" +
                         indent + "                parseErrors.add(\"Unknown tag: \"  + CodeUtils.toString(bb, startPos, curr - startPos));\n" +
-                        indent + "                return -1;\n" +
+                        indent + "                return startPos;\n" +
                         indent + "            }\n\n" +
 
                         indent + "            int res = search.get().decode(bb, eqPos, curr - eqPos - 1, this);\n" +

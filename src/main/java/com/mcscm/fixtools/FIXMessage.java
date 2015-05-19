@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 
 public interface FIXMessage {
 
-//    String getType();
+    String getType();
 
 //    byte[] getTypeBytes();
 

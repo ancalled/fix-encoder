@@ -7,7 +7,7 @@ import com.mcscm.fixtools.utils.RadixTree;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class MessageWrapper {
+public class MessageHeader {
 
     public static final byte SEP = 1;
     public static final byte EQ = 61;
@@ -15,18 +15,14 @@ public class MessageWrapper {
     public static final byte[] TAG_BEGINSTRING = {56}; //8
     public static final byte[] TAG_BODYLENGTH = {57}; //9
     public static final byte[] TAG_MSGTYPE = {51, 53}; //35
-    public static final byte[] TAG_CHECKSUM = {49, 48}; //10
     public static final byte[] TAG_MSGSEQNUM = {51, 52}; //34
     public static final byte[] TAG_SENDERCOMPID = {52, 57}; //49
     public static final byte[] TAG_SENDINGTIME = {53, 50}; //52
     public static final byte[] TAG_TARGETCOMPID = {53, 54}; //56
 
 
-    public static void main(String[] args) {
-        System.out.println(Arrays.toString("56".getBytes()));
-    }
 
-    public static final RadixTree<FieldDecoder<MessageWrapper>> TAGS_TREE = new RadixTree<>();
+    public static final RadixTree<FieldDecoder<MessageHeader>> TAGS_TREE = new RadixTree<>();
 
     static {
         TAGS_TREE.add(TAG_BEGINSTRING, (bb, o, l, mes) -> {
@@ -35,6 +31,7 @@ public class MessageWrapper {
         });
         TAGS_TREE.add(TAG_BODYLENGTH, (bb, o, l, mes) -> {
             mes.bodyLength = CodeUtils.getInt(bb, o, l);
+            mes.bodyLengthPos = o + l + 1;
             return o + l + 1;
         });
         TAGS_TREE.add(TAG_MSGTYPE, (bb, o, l, mes) -> {
@@ -58,31 +55,73 @@ public class MessageWrapper {
             return o + l + 1;
         });
 
-        TAGS_TREE.add(TAG_CHECKSUM, (bb, o, l, mes) -> {
-            mes.checkSum = CodeUtils.getInt(bb, o, l);
-            return o + l + 1;
-        });
     }
 
     public String beginString;
     public int bodyLength;
     public String msgType;
-    public int checkSum;
     int mesSeqNum;
     String senderCompID;
     Date sendingTime;
     String targetCompID;
+
+    public int bodyLengthPos;
+
 
     enum DecodeState {KEY_PARSING, VALUE_PARSING}
 
     public final BitSet parsed = new BitSet(5);
     public final List<String> parseErrors = new ArrayList<>();
 
+    public void encode(ByteBuffer buf) {
+        if (beginString != null) {
+            buf.put(TAG_BEGINSTRING);
+            buf.put(EQ);
+            CodeUtils.put(buf, beginString);
+            buf.put(SEP);
+        }
+        if (bodyLength != 0) {
+            buf.put(TAG_BODYLENGTH);
+            buf.put(EQ);
+            CodeUtils.put(buf, bodyLength);
+            buf.put(SEP);
+        }
+        if (msgType != null) {
+            buf.put(TAG_MSGTYPE);
+            buf.put(EQ);
+            CodeUtils.put(buf, msgType);
+            buf.put(SEP);
+        }
+        if (mesSeqNum != 0) {
+            buf.put(TAG_MSGSEQNUM);
+            buf.put(EQ);
+            CodeUtils.put(buf, mesSeqNum);
+            buf.put(SEP);
+        }
+        if (senderCompID != null) {
+            buf.put(TAG_SENDERCOMPID);
+            buf.put(EQ);
+            CodeUtils.put(buf, senderCompID);
+            buf.put(SEP);
+        }
+        if (sendingTime != null) {
+            buf.put(TAG_SENDINGTIME);
+            buf.put(EQ);
+            CodeUtils.put(buf, DateFormatter.formatAsDateTimeMilis(sendingTime));
+            buf.put(SEP);
+        }
+        if (targetCompID != null) {
+            buf.put(TAG_TARGETCOMPID);
+            buf.put(EQ);
+            CodeUtils.put(buf, targetCompID);
+            buf.put(SEP);
+        }
+    }
 
     public int decode(ByteBuffer bb, int offset) {
 
         DecodeState state = DecodeState.KEY_PARSING;
-        RadixTree.Node<FieldDecoder<MessageWrapper>> search = TAGS_TREE.root;
+        RadixTree.Node<FieldDecoder<MessageHeader>> search = TAGS_TREE.root;
 
         int startPos = offset;
         int eqPos = startPos;

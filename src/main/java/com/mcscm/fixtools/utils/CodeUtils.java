@@ -1,9 +1,9 @@
 package com.mcscm.fixtools.utils;
 
+import com.mcscm.fixtools.*;
+
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Random;
 
 public class CodeUtils {
@@ -290,37 +290,45 @@ public class CodeUtils {
         }
     }
 
-    public static void main(String[] args) {
-        final int times = 100;
-        Random r = new Random();
-        ByteBuffer bb = ByteBuffer.allocate(100);
-//        System.out.println("pos: " + bb.position());
-//        put(bb, 124);
-//        System.out.println("pos: " + bb.position());
-//        put(bb, 10005000L);
-//        System.out.println("pos: " + bb.position());
-//        put(bb, 1);
-//        System.out.println("pos: " + bb.position());
-//        put(bb, " test number");
-//        System.out.println("pos: " + bb.position());
-//
-//        System.out.println(toString(bb));
 
-        for (int i = 0; i < times; i++) {
-            long val = r.nextLong();
-//            int val = r.nextInt();
-            empty(bb);
-            put(bb, val, 0);
-            String text = toString(bb);
-            System.out.println(val + "\t" + text + "\t" + Long.toString(val).equals(text));
-//            System.out.println(Arrays.toString(Long.toString(val).toCharArray()));
-//            System.out.println(Arrays.toString(text.toCharArray()));
-//            System.out.println();
+    //  ----------------------------------------------------
+
+    public static FIXMessage decodeMessage(ByteBuffer bb, int offset, MessageHeader header, MessageTrailer trailer, MessageFactory factory) {
+        if (header == null || factory == null) return null;
+
+        int start = offset;
+        offset = header.decode(bb, offset);
+
+        FIXMessage message = factory.create(header.msgType);
+        offset = message.decode(bb, offset);
+
+        trailer.decode(bb, offset);
+
+        int sum = CodeUtils.calcCheckSum(bb, start, header.bodyLength + header.bodyLengthPos - start);
+
+        if (trailer.checkSum != sum) {
+           throw new CoderException("Wrong checksum!");
         }
+
+        return message;
     }
 
-    public static void test(byte[] bytes) {
-
+    public static void encodeMessage(ByteBuffer bb, int offset, FIXMessage mes, MessageHeader header, MessageTrailer trailer) {
+        bb.position(offset);
+        header.msgType = mes.getType();
+//        header.bodyLength = //todo calc body length
+        header.encode(bb);
+        mes.encode(bb);
+        trailer.checkSum = CodeUtils.calcCheckSum(bb, offset, bb.position());
+        trailer.encode(bb);
     }
 
+    public static int calcCheckSum(ByteBuffer bb, int offset, int length) {
+        int cks = 0;
+        for (int idx = offset; idx < offset + length; idx++) {
+            cks += bb.get(idx);
+        }
+
+        return cks % 256;
+    }
 }
