@@ -7,6 +7,7 @@ import java.util.Arrays;
 import static java.lang.String.format;
 
 public class FieldDescriptor {
+
     public final int tag;
     public final String name;
     public final String fieldName;
@@ -107,7 +108,7 @@ public class FieldDescriptor {
 
         if (type == FieldType.NUMINGROUP) {
             sb.append(format(
-                    indent + "    for (%s it: this.%s) {\n" +
+                            indent + "    for (%s it: this.%s) {\n" +
                             indent + "        sb.append(it.encode());\n" +
                             indent + "    }\n",
                     name, fieldName
@@ -130,7 +131,6 @@ public class FieldDescriptor {
         } else {
             switch (type.javaType) {
                 case "String":
-//                mthd = "buf.put(%s.getBytes())";
                     mthd = "CodeUtils.put(buf, %s)";
                     break;
                 case "int":
@@ -138,7 +138,6 @@ public class FieldDescriptor {
                     mthd = "CodeUtils.put(buf, %s)";
                     break;
                 case "long":
-//                    mthd = "buf.put(Long.toString(%s).getBytes())";
                     mthd = "CodeUtils.put(buf, %s)";
                     break;
                 case "double":
@@ -173,16 +172,14 @@ public class FieldDescriptor {
 
         String putMthd = String.format(mthd, arg);
         sb.append(String.format(
-//                indent + "    buf.put(\"%d\".getBytes());\n" +
-                indent + "    buf.put(TAG_%S);\n" +
+                        indent + "    buf.put(TAG_%S);\n" +
                         indent + "    buf.put(EQ);\n" +
-//                        indent + "    buf.put(%s.getBytes());\n"
                         indent + "    %s;\n"
                 , name, putMthd));
 
         if (type == FieldType.NUMINGROUP) {
             sb.append(format(
-                    indent + "    buf.put(SEP);\n" +
+                            indent + "    buf.put(SEP);\n" +
                             indent + "    for (%s it: this.%s) {\n" +
                             indent + "        it.encode(buf);\n" +
                             indent + "    }\n" +

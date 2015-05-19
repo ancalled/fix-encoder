@@ -75,10 +75,11 @@ public class ProtocolGenerator {
             String fname = name + ".java";
             System.out.println("\tGenerating class " + name + "...");
 
-
             String body = generateClass(node, false, 0, new HashSet<>());
             Files.write(outDir.resolve(fname), body.getBytes());
         }
+
+        generateFactory();
 
     }
 
@@ -97,7 +98,9 @@ public class ProtocolGenerator {
         int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, indent + "    ", classname, javaPackage));
         System.out.printf("\tgenerated %d class properties\n", processed);
 
+        bodySb.append("\n");
         bodySb.append(indent).append("    public final BitSet parsed = new BitSet(").append(processed).append(");\n");
+        bodySb.append(indent).append("    public final List<String> parseErrors = new ArrayList<>();\n");
         bodySb.append("\n");
 
         generateMethods(bodySb, node, indent + "    ", classname);
@@ -125,6 +128,46 @@ public class ProtocolGenerator {
         rootSb.append(bodySb);
 
         return rootSb.toString();
+    }
+
+    private void generateFactory() throws IOException {
+        NodeList nodes = eval("/fix/messages/message");
+
+        StringBuilder sb = new StringBuilder();
+        final String className = "CustomFIXFactory";
+        sb.append(String.format(
+                "package %s;\n" +
+
+                        "import com.mcscm.fixtools.MessageFactory;\n" +
+                        "import com.mcscm.fixtools.FIXMessage;\n\n" +
+
+                        "public class %s implements MessageFactory {\n\n" +
+
+                        "    public FIXMessage create(String tag) {\n\n" +
+
+                        "        switch (tag) {\n"
+
+                , javaPackage, className));
+
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Element node = (Element) nodes.item(i);
+            if (node == null) continue;
+
+            final String name = node.getAttribute("name");
+            final String msgtype = node.getAttribute("msgtype");
+            sb.append(String.format("            case \"%s\":\n" +
+                    "                return new %s();\n"
+                    , msgtype, name));
+        }
+
+        sb.append("             default:\n");
+        sb.append("                 return null;\n");
+        sb.append("         }\n");
+        sb.append("    }\n\n");
+        sb.append("}\n");
+
+
+        Files.write(outDir.resolve(className + ".java"), sb.toString().getBytes());
     }
 
     private String generateEnum(String name, FieldType type, List<EnumValue> enumValues) {
@@ -215,6 +258,8 @@ public class ProtocolGenerator {
         imports.add("com.mcscm.fixtools.utils.RadixTree");
         imports.add("com.mcscm.fixtools.utils.FieldDecoder");
         imports.add("java.util.BitSet");
+        imports.add("java.util.List");
+        imports.add("java.util.ArrayList");
         imports.add("java.nio.ByteBuffer");
     }
 
@@ -222,17 +267,25 @@ public class ProtocolGenerator {
         imports.stream().map(i -> "import " + i + ";\n").forEach(sb::append);
     }
 
-    private void generateConstants(StringBuilder sb, Element node, String className, String indent) {
+    private void generateConstants(StringBuilder sb, Element el, String className, String indent) {
         sb.append(indent).append(String.format("    public static final byte SEP = %d;\n", (byte) fieldSep));
         sb.append(indent).append("    public static final byte EQ = 61;\n");
         sb.append("\n");
 
-        forEach(node, 0, (f, i) -> f.appendFieldConstant(sb, indent + "    "));
+        forEach(el, 0, (f, i) -> f.appendFieldConstant(sb, indent + "    "));
+        sb.append("\n");
+
+        final String msgtype = el.getAttribute("msgtype");
+        sb.append(indent).append(String.format("    public static final String MSG_TYPE = \"%s\";\n", msgtype));
+        sb.append(indent).append(String.format("    public static final byte[] MSG_TYPE_BYTES = %s;\n",
+                Arrays.toString(msgtype.getBytes())
+                        .replace("[", "{")
+                        .replace("]", "}")));
 
         sb.append("\n");
         sb.append(indent).append(String.format("    public static final RadixTree<FieldDecoder<%s>> TAGS_TREE = new RadixTree<>();\n", className));
         sb.append(indent).append("    static {\n");
-        forEach(node, 0, (f, i) -> {
+        forEach(el, 0, (f, i) -> {
             if (f.type == FieldType.NUMINGROUP) {
                 sb.append(String.format(
                         indent + "        TAGS_TREE.add(TAG_%S, (bb, o, l, mes) -> {\n" +
@@ -272,11 +325,27 @@ public class ProtocolGenerator {
 
     private void generateMethods(StringBuilder sb, Element el, String indent, String className) {
 
+        final String msgtype = el.getAttribute("msgtype");
         sb.append(format(
-                indent + "public String getType() {\n" +
-                        indent + "    return \"%s\";\n" +
-                        indent + "}\n\n",
-                el.getAttribute("msgtype")));
+//                indent + "public static String getType() {\n" +
+//                        indent + "    return \"%s\";\n" +
+//                        indent + "}\n\n" +
+//
+//                        indent + "public static byte[] getTypeBytes() {\n" +
+//                        indent + "    return MSG_TYPE;\n" +
+//                        indent + "}\n\n" +
+
+                indent + "public void clearWarnings() {\n" +
+                        indent + "    parseErrors.clear();\n" +
+                        indent + "}\n\n" +
+
+                        indent + "public void printWarnings() {\n" +
+                        indent + "    for (String er: parseErrors) {\n" +
+                        indent + "        System.out.println(er);\n" +
+                        indent + "    }\n" +
+                        indent + "}\n\n"
+                ,
+                msgtype));
 
         generatePropertiesAccess(sb, el, indent);
         generateHasValues(sb, el, indent);
@@ -412,6 +481,7 @@ public class ProtocolGenerator {
                         indent + "        if (b == SEP) {\n" +
                         indent + "            if (search.get() == null) {\n" +
                         indent + "                state = DecodeState.ERROR_ACCURED;\n" +
+                        indent + "                parseErrors.add(\"Unknown tag: \"  + CodeUtils.toString(bb, startPos, curr - startPos));\n" +
                         indent + "                return -1;\n" +
                         indent + "            }\n\n" +
 

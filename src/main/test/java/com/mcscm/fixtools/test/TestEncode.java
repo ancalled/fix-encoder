@@ -101,6 +101,33 @@ public class TestEncode {
 
         System.out.println(md.mDReqID);
     }
+    
+    @Test
+    public void testDecode4() {
+//        String text = "9=108\u000135=X\u00011021=2\u0001262=1000\u0001268=2\u0001279=1\u0001269=0\u000155=KZTK\u0001270=341\u0001271=100004\u0001279=1\u0001269=1\u000155=KZTK\u0001270=342.19\u0001271=200100\u000110=115\u0001";
+        String text = "1021=2\u0001262=1000\u0001268=2\u0001279=1\u0001269=0\u000155=KZTK\u0001270=341\u0001271=100004\u0001279=1\u0001269=1\u000155=KZTK\u0001270=342.19\u0001271=200100";
+        ByteBuffer bb = ByteBuffer.wrap(text.getBytes());
+        MarketDataIncrementalRefresh mdInc = new MarketDataIncrementalRefresh();
+        mdInc.decode(bb, 0);
+
+        mdInc.printWarnings();
+
+        System.out.println("mDReqID: " + mdInc.mDReqID);
+        System.out.println("mDBookType: " + mdInc.mDBookType);
+
+        for (int i = 0; i < mdInc.noMDEntries.size(); i++) {
+            final MarketDataIncrementalRefresh.NoMDEntries grp = mdInc.noMDEntries.get(i);
+            System.out.printf("noMd[%d].mDUpdateAction: %s\n", i, grp.mDUpdateAction);
+            System.out.printf("noMd[%d].mDEntryType: %s\n", i, grp.mDEntryType);
+            System.out.printf("noMd[%d].securityID: %s\n", i, grp.securityID);
+            System.out.printf("noMd[%d].symbol: %s\n", i, grp.symbol);
+            System.out.printf("noMd[%d].mDEntryPx: %s\n", i, grp.mDEntryPx);
+            System.out.printf("noMd[%d].mDEntrySize: %s\n", i, grp.mDEntrySize);
+            System.out.printf("noMd[%d].numberOfOrders: %s\n", i, grp.numberOfOrders);
+        }
+
+     
+    }
 
 
     @Test

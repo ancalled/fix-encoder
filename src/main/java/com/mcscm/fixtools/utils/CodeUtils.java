@@ -277,6 +277,13 @@ public class CodeUtils {
         return StandardCharsets.US_ASCII.decode(bb).toString().trim();
     }
 
+    public static String toString(ByteBuffer bb, int offset, int length) {
+        byte[] bytes = new byte[length];
+        bb.position(offset);
+        bb.get(bytes);
+        return new String(bytes);
+    }
+
     public static void empty(ByteBuffer bb) {
         for (int i = 0; i < bb.capacity(); i++) {
             bb.put(i, (byte) 0);
