@@ -1,11 +1,12 @@
 package com.mcscm.fixtools.utils;
 
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
 
-public class EncodeUtils {
+public class CodeUtils {
 
     public static void put(ByteBuffer bb, String str) {
         int pos = bb.position();
@@ -160,6 +161,13 @@ public class EncodeUtils {
         byte[] bytes = new byte[length];
         bb.get(bytes);
         return Long.parseLong(new String(bytes));
+//        return 0; //todo implement
+    }
+
+
+    public static char getChar(ByteBuffer bb, int offset, int length) {
+        bb.position(offset);
+        return bb.getChar();
 //        return 0; //todo implement
     }
 

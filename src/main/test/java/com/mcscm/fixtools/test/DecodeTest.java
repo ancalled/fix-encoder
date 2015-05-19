@@ -1,7 +1,8 @@
 package com.mcscm.fixtools.test;
 
 import com.mcscm.fixtools.perf.PerfTestJMH;
-import com.mcscm.fixtools.utils.EncodeUtils;
+import com.mcscm.fixtools.utils.CodeUtils;
+import com.mcscm.fixtools.utils.FieldDecoder;
 import com.mcscm.fixtools.utils.RadixTree;
 import org.sample.MarketDataIncrementalRefresh;
 import org.sample.enums.ApplQueueResolution;
@@ -14,21 +15,21 @@ import java.nio.ByteBuffer;
 import static com.mcscm.fixtools.test.DecodeTest.DecodeState.ERROR_ACCURED;
 import static com.mcscm.fixtools.test.DecodeTest.DecodeState.KEY_PARSING;
 import static com.mcscm.fixtools.test.DecodeTest.DecodeState.VALUE_PARSING;
-import static com.mcscm.fixtools.utils.EncodeUtils.*;
+import static com.mcscm.fixtools.utils.CodeUtils.*;
 import static org.sample.MarketDataIncrementalRefresh.*;
 
 public class DecodeTest {
 
-    public static final RadixTree<FieldDecoder<MarketDataIncrementalRefresh>> MD_TAGS_TREE = new RadixTree<>();
+    public static final RadixTree<FieldDecoder<MarketDataIncrementalRefresh>> TAGS_TREE = new RadixTree<>();
 
     static {
-        MD_TAGS_TREE.add(TAG_MDREQID, (bb, o, l, mes) -> {
+        TAGS_TREE.add(TAG_MDREQID, (bb, o, l, mes) -> {
             if (mes.parsed.get(0)) return -1;
             mes.mDReqID = getString(bb, o, l);
             mes.parsed.set(0);
             return o + l + 1;
         });
-        MD_TAGS_TREE.add(TAG_NOMDENTRIES, (bb, o, l, mes) -> {
+        TAGS_TREE.add(TAG_NOMDENTRIES, (bb, o, l, mes) -> {
             if (mes.parsed.get(1)) return -1;
 
             int size = getInt(bb, o, l);
@@ -44,7 +45,7 @@ public class DecodeTest {
 
             return offset;
         });
-        MD_TAGS_TREE.add(TAG_APPLQUEUEDEPTH, (bb, o, l, mes) -> {
+        TAGS_TREE.add(TAG_APPLQUEUEDEPTH, (bb, o, l, mes) -> {
             if (mes.parsed.get(2)) return -1;
 
             mes.applQueueDepth = getInt(bb, o, l);
@@ -52,7 +53,7 @@ public class DecodeTest {
 
             return o + l + 1;
         });
-        MD_TAGS_TREE.add(TAG_APPLQUEUERESOLUTION, (bb, o, l, mes) -> {
+        TAGS_TREE.add(TAG_APPLQUEUERESOLUTION, (bb, o, l, mes) -> {
             if (mes.parsed.get(3)) return -1;
 
             mes.applQueueResolution = ApplQueueResolution.getByValue(getInt(bb, o, l));
@@ -61,7 +62,7 @@ public class DecodeTest {
             return o + l + 1;
         });
 
-        MD_TAGS_TREE.add(TAG_MDBOOKTYPE, (bb, o, l, mes) -> {
+        TAGS_TREE.add(TAG_MDBOOKTYPE, (bb, o, l, mes) -> {
             if (mes.parsed.get(4)) return -1;
 
             mes.mDBookType = MDBookType.getByValue(getInt(bb, o, l));
@@ -133,19 +134,12 @@ public class DecodeTest {
         });
     }
 
-    @FunctionalInterface
-    public interface FieldDecoder<K> {
-
-        int decode(ByteBuffer bb, int offset, int length, K k);
-
-    }
-
     enum DecodeState {KEY_PARSING, VALUE_PARSING, ERROR_ACCURED}
 
     public static int decode(ByteBuffer bb, int offset, MarketDataIncrementalRefresh message) {
 
         DecodeState state = KEY_PARSING;
-        RadixTree.Node<FieldDecoder<MarketDataIncrementalRefresh>> search = MD_TAGS_TREE.root;
+        RadixTree.Node<FieldDecoder<MarketDataIncrementalRefresh>> search = TAGS_TREE.root;
 
         int startPos = offset;
         int eqPos = startPos;
@@ -164,7 +158,7 @@ public class DecodeTest {
                 int res = search.value.decode(bb, eqPos, curr - eqPos - 1, message);
                 if (res < 0) return startPos;
 
-                search = MD_TAGS_TREE.root;
+                search = TAGS_TREE.root;
                 state = KEY_PARSING;
                 startPos = res;
                 curr = startPos;
@@ -236,7 +230,7 @@ public class DecodeTest {
 
         ByteBuffer bb = ByteBuffer.allocate(2048);
         PerfTestJMH.encode_ByteBuffer(new MarketDataIncrementalRefresh(), bb);
-        System.out.println(EncodeUtils.toString(bb));
+        System.out.println(CodeUtils.toString(bb));
 //        bb.position(0);
         bb.flip();
 

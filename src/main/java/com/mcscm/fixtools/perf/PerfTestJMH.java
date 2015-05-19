@@ -20,10 +20,14 @@ public class PerfTestJMH {
     public static class MyState {
         final MarketDataIncrementalRefresh marketDataEncode = new MarketDataIncrementalRefresh();
         final MarketDataIncrementalRefresh marketDataDecode = new MarketDataIncrementalRefresh();
-        final String mesToDecode;
+        final String decodeMessage;
+        final ByteBuffer decodeBuffer;
 
         public MyState() {
-            mesToDecode = PerfTestJMH.encode_StringBuffer(marketDataEncode);
+            decodeMessage = PerfTestJMH.encode_StringBuffer(marketDataEncode);
+            decodeBuffer = ByteBuffer.allocate(2048);
+            PerfTestJMH.encode_ByteBuffer(marketDataEncode, decodeBuffer);
+            decodeBuffer.flip();
         }
     }
 
@@ -58,10 +62,16 @@ public class PerfTestJMH {
         encode_ByteBuffer(marketData, bb);
     }
 
-//    @Benchmark
-    public MarketDataIncrementalRefresh testDecode() {
-        final String mesToDecode = state.mesToDecode;
+    @Benchmark
+    public MarketDataIncrementalRefresh testDecode_StringBuilder() {
+        final String mesToDecode = state.decodeMessage;
         return decode(mesToDecode, state.marketDataDecode);
+    }
+
+    @Benchmark
+    public MarketDataIncrementalRefresh testDecode_ByteBuffer() {
+        final ByteBuffer decodeBuffer = state.decodeBuffer;
+        return decode(decodeBuffer, state.marketDataDecode);
     }
 
 
@@ -124,36 +134,40 @@ public class PerfTestJMH {
         return mdIncRef;
     }
 
+    public MarketDataIncrementalRefresh decode(ByteBuffer bb, MarketDataIncrementalRefresh mdIncRef) {
+
+        mdIncRef.decode(bb, 0);
+
+        MarketDataIncrementalRefresh.NoMDEntries grp1 = mdIncRef.noMDEntries.get(0);
+        MDEntryType type = grp1.mDEntryType;
+        MDUpdateAction updAct = grp1.mDUpdateAction;
+        MarketDataIncrementalRefresh.NoMDEntries grp2 = mdIncRef.noMDEntries.get(1);
+        MDEntryType type2 = grp2.mDEntryType;
+        MDUpdateAction updAct2 = grp2.mDUpdateAction;
+
+        return mdIncRef;
+    }
+
     public static void main(String[] args) {
         PerfTestJMH bench = new PerfTestJMH();
         bench.init();
 
-        for (int i = 0; i < 100000; i++) {
-            bench.testEncode_ByteBuffer();
-        }
 
-        long start = System.nanoTime();
-        final int iterations = 1000000;
-        for (int i = 0; i < iterations; i++) {
-            bench.testEncode_ByteBuffer();
-        }
-        long proc = System.nanoTime() - start;
-        long op = proc / iterations;
-        System.out.println("Encode nanos " + op);
-//
-////        System.out.println("entries: " + state.marketDataEncode.noMDEntries.size());
-//
+        MarketDataIncrementalRefresh mdInc = new MarketDataIncrementalRefresh();
+        bench.decode(bench.state.decodeBuffer, mdInc);
 //        for (int i = 0; i < 100000; i++) {
-//            bench.testDecode();
+//            bench.testDecode_ByteBuffer();
 //        }
 //
-//        start = System.nanoTime();
+//        long start = System.nanoTime();
+//        final int iterations = 1000000;
 //        for (int i = 0; i < iterations; i++) {
-//            bench.testEncode();
+//            bench.testEncode_ByteBuffer();
 //        }
-//        proc = System.nanoTime() - start;
-//        op = proc / iterations;
-//        System.out.println("Decode nanos " + op);
+//        long proc = System.nanoTime() - start;
+//        long op = proc / iterations;
+//        System.out.println("Encode nanos " + op);
+
     }
 
 

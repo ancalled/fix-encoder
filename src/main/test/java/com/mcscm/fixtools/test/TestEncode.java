@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class TestEncode {
 
@@ -97,8 +99,8 @@ public class TestEncode {
         md.decode(text);
 
         System.out.println(md.mDReqID);
-
     }
+
 
     @Test
     public void testEncodeByteBuffer() {
@@ -121,7 +123,20 @@ public class TestEncode {
 
         System.out.println(expected.encode());
         assertEquals(expected.encode().trim(), text.trim());
+
+        bb.flip();
+        ExecutionReport decoded = new ExecutionReport();
+        assertTrue(decoded.decode(bb, 0) >=0);
+        assertEquals(expected.orderID, decoded.orderID);
+        assertEquals(expected.symbol, decoded.symbol);
+        assertEquals(expected.account, decoded.account);
+        assertEquals(expected.price, decoded.price, DELTA);
+        assertEquals(expected.cumQty, decoded.cumQty);
+        assertEquals(expected.side, decoded.side);
+        assertEquals(expected.transactTime, decoded.transactTime);
+
     }
+
 
     @Test
     public void testEncodeByteBuffer2() {

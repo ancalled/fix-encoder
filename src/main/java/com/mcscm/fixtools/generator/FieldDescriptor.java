@@ -1,6 +1,6 @@
 package com.mcscm.fixtools.generator;
 
-import com.mcscm.fixtools.utils.EncodeUtils;
+import com.mcscm.fixtools.utils.CodeUtils;
 
 import java.util.Arrays;
 
@@ -55,7 +55,7 @@ public class FieldDescriptor {
     public void appendFieldConstant(StringBuilder sb, String indent) {
         sb.append(indent);
 
-        String bytes = Arrays.toString(EncodeUtils.intToBytes(tag))
+        String bytes = Arrays.toString(CodeUtils.intToBytes(tag))
                 .replace("[", "{")
                 .replace("]", "}");
         sb.append(String.format("public static final byte[] TAG_%S = %s; //%d\n", name, bytes, tag));
@@ -126,39 +126,39 @@ public class FieldDescriptor {
 
         String mthd = "";
         if (enumField) {
-             mthd = "buf.put(" + fieldName + ".bytes)";
+            mthd = "buf.put(" + fieldName + ".bytes)";
         } else {
             switch (type.javaType) {
                 case "String":
 //                mthd = "buf.put(%s.getBytes())";
-                    mthd = "EncodeUtils.put(buf, %s)";
+                    mthd = "CodeUtils.put(buf, %s)";
                     break;
                 case "int":
                 case "List":
-                    mthd = "EncodeUtils.put(buf, %s)";
+                    mthd = "CodeUtils.put(buf, %s)";
                     break;
                 case "long":
 //                    mthd = "buf.put(Long.toString(%s).getBytes())";
-                    mthd = "EncodeUtils.put(buf, %s)";
+                    mthd = "CodeUtils.put(buf, %s)";
                     break;
                 case "double":
-                    mthd = "EncodeUtils.put(buf, Double.toString(%s))";
+                    mthd = "CodeUtils.put(buf, Double.toString(%s))";
                     break;
                 case "char":
-                    mthd = "EncodeUtils.put(buf, Character.toString(%s))";
+                    mthd = "CodeUtils.put(buf, Character.toString(%s))";
                     break;
                 case "boolean":
                     mthd = "buf.put(Boolean.toString(%s).getBytes())";
                     break;
                 case "Date":
                     if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
-                        mthd = "EncodeUtils.put(buf, DateFormatter.formatAsDateTime(%s))";
+                        mthd = "CodeUtils.put(buf, DateFormatter.formatAsDateTime(%s))";
 
                     } else if (type == FieldType.UTCDATE || type == FieldType.UTCDATEONLY || type == FieldType.LOCALMKTDATE) {
-                        mthd = "EncodeUtils.put(buf, DateFormatter.formatAsDate(%s))";
+                        mthd = "CodeUtils.put(buf, DateFormatter.formatAsDate(%s))";
 
                     } else if (type == FieldType.UTCTIMEONLY || type == FieldType.TIME || type == FieldType.TZTIMEONLY) {
-                        mthd = "EncodeUtils.put(buf, DateFormatter.formatAsTime(%s))";
+                        mthd = "CodeUtils.put(buf, DateFormatter.formatAsTime(%s))";
                     }
                     break;
             }
@@ -183,7 +183,7 @@ public class FieldDescriptor {
         if (type == FieldType.NUMINGROUP) {
             sb.append(format(
                     indent + "    buf.put(SEP);\n" +
-                    indent + "    for (%s it: this.%s) {\n" +
+                            indent + "    for (%s it: this.%s) {\n" +
                             indent + "        it.encode(buf);\n" +
                             indent + "    }\n",
                     name, fieldName
@@ -193,5 +193,49 @@ public class FieldDescriptor {
         sb.append(indent).append("    buf.put(SEP);\n");
         sb.append(indent).append("}\n");
     }
+
+
+    public String decodeMethod(String bufParam, String offsetParam, String lengthParam) {
+        String decode = String.format(decodeSimple(), bufParam, offsetParam, lengthParam);
+
+        if (enumField) {
+           return name + ".getByValue(" + decode + ")";
+        } else {
+            return decode;
+        }
+    }
+
+    private String decodeSimple() {
+          switch (type.javaType) {
+            case "String":
+                return "CodeUtils.getString(%s, %s, %s)";
+            case "int":
+            case "List":
+                return "CodeUtils.getInt(%s, %s, %s)";
+            case "long":
+                return "CodeUtils.getLong(%s, %s, %s)";
+            case "double":
+                return "CodeUtils.getLong(%s, %s, %s)";
+            case "char":
+                return "CodeUtils.getChar(%s, %s, %s)";
+            case "boolean":
+                return "Boolean.valueOf(CodeUtils.getString(%s, %s, %s))";
+            case "Date":
+                if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
+                    return "DateFormatter.parseDateTime(CodeUtils.getString(%s, %s, %s))";
+
+                } else if (type == FieldType.UTCDATE || type == FieldType.UTCDATEONLY || type == FieldType.LOCALMKTDATE) {
+                    return "DateFormatter.parseDate(CodeUtils.getString(%s, %s, %s))";
+
+                } else if (type == FieldType.UTCTIMEONLY || type == FieldType.TIME || type == FieldType.TZTIMEONLY) {
+                    return "DateFormatter.parseTime(CodeUtils.getString(%s, %s, %s))";
+                }
+                break;
+        }
+        return "";
+    }
+
+
+
 
 }

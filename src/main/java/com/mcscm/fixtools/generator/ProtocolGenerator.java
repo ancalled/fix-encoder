@@ -92,7 +92,7 @@ public class ProtocolGenerator {
 
         StringBuilder bodySb = new StringBuilder();
 
-        generateConstants(bodySb, node, indent);
+        generateConstants(bodySb, node, classname, indent);
 
         int processed = forEach(node, 0, (f, i) -> f.appendProperty(bodySb, indent + "    ", classname, javaPackage));
         System.out.printf("\tgenerated %d class properties\n", processed);
@@ -165,7 +165,7 @@ public class ProtocolGenerator {
 
         sb.append(format(
                 indent + "public final %s value;\n" +
-                indent + "public final byte[] bytes;\n\n" +
+                        indent + "public final byte[] bytes;\n\n" +
                         indent + "%s(%s value, byte[] bytes) {\n" +
                         indent + "    this.value = value;\n" +
                         indent + "    this.bytes = bytes;\n" +
@@ -211,7 +211,9 @@ public class ProtocolGenerator {
         });
 
         imports.add("com.mcscm.fixtools.FIXMessage");
-        imports.add("com.mcscm.fixtools.utils.EncodeUtils");
+        imports.add("com.mcscm.fixtools.utils.CodeUtils");
+        imports.add("com.mcscm.fixtools.utils.RadixTree");
+        imports.add("com.mcscm.fixtools.utils.FieldDecoder");
         imports.add("java.util.BitSet");
         imports.add("java.nio.ByteBuffer");
     }
@@ -220,11 +222,50 @@ public class ProtocolGenerator {
         imports.stream().map(i -> "import " + i + ";\n").forEach(sb::append);
     }
 
-    private void generateConstants(StringBuilder sb, Element node, String indent) {
+    private void generateConstants(StringBuilder sb, Element node, String className, String indent) {
         sb.append(indent).append(String.format("    public static final byte SEP = %d;\n", (byte) fieldSep));
         sb.append(indent).append("    public static final byte EQ = 61;\n");
+        sb.append("\n");
 
         forEach(node, 0, (f, i) -> f.appendFieldConstant(sb, indent + "    "));
+
+        sb.append("\n");
+        sb.append(indent).append(String.format("    public static final RadixTree<FieldDecoder<%s>> TAGS_TREE = new RadixTree<>();\n", className));
+        sb.append(indent).append("    static {\n");
+        forEach(node, 0, (f, i) -> {
+            if (f.type == FieldType.NUMINGROUP) {
+                sb.append(String.format(
+                        indent + "        TAGS_TREE.add(TAG_%S, (bb, o, l, mes) -> {\n" +
+                                indent + "            if (mes.parsed.get(%d)) return -1;\n\n" +
+
+                                indent + "            int size = CodeUtils.getInt(bb, o, l);\n" +
+                                indent + "            int offset = o + l + 1;\n\n" +
+
+                                indent + "            for (int i = 0; i < size; i++) {\n" +
+                                indent + "                %s item = new %s();\n" +
+                                indent + "                mes.add%s(item);\n" +
+                                indent + "                offset = item.decode(bb, offset);\n" +
+                                indent + "            }\n\n" +
+
+                                indent + "            mes.parsed.set(%d);\n\n" +
+
+                                indent + "            return offset;\n" +
+                                indent + "        });\n",
+                        f.fieldName, i, f.name, f.name, f.name, i
+                ));
+            } else {
+                sb.append(String.format(
+                        indent + "        TAGS_TREE.add(TAG_%S, (bb, o, l, mes) -> {\n" +
+                                indent + "            if (mes.parsed.get(%d)) return -1;\n" +
+                                indent + "            mes.%s = %s;\n" +
+                                indent + "            mes.parsed.set(%d);\n" +
+                                indent + "            return o + l + 1;\n" +
+                                indent + "        });\n",
+                        f.fieldName, i, f.fieldName, f.decodeMethod("bb", "o", "l"), i
+                ));
+            }
+        });
+        sb.append(indent).append("    }\n");
 
         sb.append("\n");
     }
@@ -242,6 +283,8 @@ public class ProtocolGenerator {
         generateEncodeMethod(sb, el, indent);
         generateEncodeBBMethod(sb, el, indent);
         generateDecodeMethod(sb, el, indent, className);
+        generateDecodeBBMethod(sb, indent, className);
+
         sb.append("\n");
     }
 
@@ -347,6 +390,60 @@ public class ProtocolGenerator {
 
         sb.append(indent).append("}\n\n");
     }
+
+
+    private void generateDecodeBBMethod(StringBuilder sb, String indent, String className) {
+        sb.append(String.format(
+                indent + "enum DecodeState {KEY_PARSING, VALUE_PARSING, ERROR_ACCURED}\n\n" +
+
+                indent + "public int decode(ByteBuffer bb, int offset) {\n\n" +
+
+                indent + "    DecodeState state = DecodeState.KEY_PARSING;\n" +
+                indent + "    RadixTree.Node<FieldDecoder<%s>> search = TAGS_TREE.root;\n\n" +
+
+                indent + "    int startPos = offset;\n" +
+                indent + "    int eqPos = startPos;\n" +
+                indent + "    int curr = startPos;\n\n" +
+
+                indent + "    for (; ; ) {\n" +
+                indent + "        if (bb.position() >= bb.capacity()) break;\n" +
+                indent + "        byte b = bb.get(curr++);\n\n" +
+
+                indent + "        if (b == SEP) {\n" +
+                indent + "            if (search.value == null) {\n" +
+                indent + "                state = DecodeState.ERROR_ACCURED;\n" +
+                indent + "                return -1;\n" +
+                indent + "            }\n\n" +
+
+                indent + "            int res = search.value.decode(bb, eqPos, curr - eqPos - 1, this);\n" +
+                indent + "            if (res < 0) return startPos;\n\n" +
+
+                indent + "            search = TAGS_TREE.root;\n" +
+                indent + "            state = DecodeState.KEY_PARSING;\n" +
+                indent + "            startPos = res;\n" +
+                indent + "            curr = startPos;\n" +
+                indent + "            continue;\n\n" +
+
+                indent + "        } else if (b == EQ) {\n" +
+                indent + "            state = DecodeState.VALUE_PARSING;\n" +
+                indent + "            eqPos = curr;\n" +
+                indent + "            continue;\n" +
+                indent + "        }\n\n" +
+
+                indent + "        if (state == DecodeState.KEY_PARSING) {\n" +
+                indent + "            search = search.find(b);\n" +
+                indent + "            if (search == null) {\n" +
+                indent + "                return startPos;\n" +
+                indent + "            }\n" +
+                indent + "        }\n" +
+                indent + "    }\n\n" +
+
+                indent + "    return curr;\n" +
+                indent + "}\n"
+                , className
+        ));
+    }
+
 
     private void generateSubClasses(StringBuilder sb, Set<String> imports, Element node, int level) {
         for (int i = 0; i < node.getChildNodes().getLength(); i++) {
