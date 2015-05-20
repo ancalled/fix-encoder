@@ -387,6 +387,13 @@ public class CodeUtils {
     }
 
 
+    public static void copyTo(ByteBuffer src, ByteBuffer dest, int offset, int length) {
+        //todo add overflow checks
+        for (int i = offset; i < length; i++) {
+            dest.put(src.get(i));
+        }
+    }
+
     //  ----------------------------------------------------
 
     public static FIXMessage decodeMessage(ByteBuffer bb, int offset,
@@ -397,13 +404,14 @@ public class CodeUtils {
 
         int start = offset;
         offset = header.decode(bb, offset);
+        offset = header.subHeader.decode(bb, offset);
 
-        FIXMessage message = factory.create(header.msgType);
+        FIXMessage message = factory.create(header.subHeader.msgType);
         offset = message.decode(bb, offset);
 
         trailer.decode(bb, offset);
 
-        int sum = CodeUtils.calcCheckSum(bb, start, header.bodyLength + header.bodyLengthPos - start);
+        int sum = CodeUtils.calcCheckSum(bb, start, header.bodyLength + header.subHeader.pos - start);
 
         if (trailer.checkSum != sum) {
             throw new CoderException("Wrong checksum!");
@@ -412,15 +420,23 @@ public class CodeUtils {
         return message;
     }
 
+    public static final ByteBuffer TEMP_BUF = ByteBuffer.allocate(1024);
+
     public static void encodeMessage(ByteBuffer bb, int offset,
                                      FIXMessage mes,
                                      MessageHeader header,
                                      MessageTrailer trailer) {
         bb.position(offset);
-        header.msgType = mes.getType();
-//        header.bodyLength = //todo calc body length
+
+        header.subHeader.msgType = mes.getType();
+
+        TEMP_BUF.position(0);
+        header.subHeader.encode(TEMP_BUF);
+        mes.encode(TEMP_BUF);
+        header.bodyLength = TEMP_BUF.position();
         header.encode(bb);
-        mes.encode(bb);
+//        bb.put(TEMP_BUF);
+        copyTo(TEMP_BUF, bb, 0, header.bodyLength);
         trailer.checkSum = CodeUtils.calcCheckSum(bb, offset, bb.position());
         trailer.encode(bb);
     }
@@ -435,15 +451,6 @@ public class CodeUtils {
         return cks & 255;
     }
 
-
-    public static void main(String[] args) {
-        String str = "412442200000001";
-        ByteBuffer bb = ByteBuffer.wrap(str.getBytes());
-//        bb.flip();
-//        int x = parseInt(bb, 0, str.length());
-        long x = parseLong(bb, 0, str.length());
-        System.out.println(x);
-    }
 
 
 }

@@ -31,7 +31,6 @@ public class MessageTrailer {
     public final BitSet parsed = new BitSet(5);
     public final List<String> parseErrors = new ArrayList<>();
 
-
     public void encode(ByteBuffer buf) {
         if (checkSum != 0) {
             buf.put(TAG_CHECKSUM);
