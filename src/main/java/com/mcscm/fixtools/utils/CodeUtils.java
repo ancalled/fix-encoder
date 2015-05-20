@@ -4,9 +4,10 @@ import com.mcscm.fixtools.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Random;
 
 public class CodeUtils {
+
+    public static final int RADIX = 10;
 
     public static void put(ByteBuffer bb, String str) {
         int pos = bb.position();
@@ -149,19 +150,19 @@ public class CodeUtils {
     }
 
     public static int getInt(ByteBuffer bb, int offset, int length) {
-        bb.position(offset);
-        byte[] bytes = new byte[length];
-        bb.get(bytes);
-        return Integer.parseInt(new String(bytes));
-//        return 0; //todo implement
+        return parseInt(bb, offset, length);
+//        bb.position(offset);
+//        byte[] bytes = new byte[length];
+//        bb.get(bytes);
+//        return Integer.parseInt(new String(bytes));
     }
 
     public static long getLong(ByteBuffer bb, int offset, int length) {
-        bb.position(offset);
-        byte[] bytes = new byte[length];
-        bb.get(bytes);
-        return Long.parseLong(new String(bytes));
-//        return 0; //todo implement
+        return parseLong(bb, offset, length);
+//        bb.position(offset);
+//        byte[] bytes = new byte[length];
+//        bb.get(bytes);
+//        return Long.parseLong(new String(bytes));
     }
 
     public static double getDouble(ByteBuffer bb, int offset, int length) {
@@ -291,6 +292,101 @@ public class CodeUtils {
     }
 
 
+    public static final int LIMIT_10 = Math.abs(Integer.MIN_VALUE) / 10;
+
+    public static int parseInt(ByteBuffer bb, int offset, int len)
+            throws NumberFormatException {
+
+        int result = 0;
+        boolean negative = false;
+        int i = 0;
+        int limit = -Integer.MAX_VALUE;
+        int multmin;
+//        int multmin = -LIMIT_10;
+        int digit;
+
+        char firstChar = (char) bb.get(offset + i);
+        if (firstChar < '0') { // Possible leading "+" or "-"
+            if (firstChar == '-') {
+                negative = true;
+                limit = Integer.MIN_VALUE;
+//                    multmin = LIMIT_10;
+            } else if (firstChar != '+')
+                throw new NumberFormatException();
+
+            if (len == 1) // Cannot have lone "+" or "-"
+                throw new NumberFormatException();
+            i++;
+        }
+
+        multmin = limit / RADIX;
+        while (i < len) {
+            // Accumulating negatively avoids surprises near MAX_VALUE
+            digit = Character.digit((char) bb.get(offset + i++), RADIX);
+            if (digit < 0) {
+                throw new NumberFormatException();
+            }
+            if (result < multmin) {
+                throw new NumberFormatException();
+            }
+            result *= RADIX;
+            if (result < limit + digit) {
+                throw new NumberFormatException();
+            }
+            result -= digit;
+        }
+
+        return negative ? result : -result;
+    }
+
+
+    public static long parseLong(ByteBuffer bb, int offset, int len)
+            throws NumberFormatException {
+
+
+        long result = 0;
+        boolean negative = false;
+        int i = 0;
+        long limit = -Long.MAX_VALUE;
+        long multmin;
+        int digit;
+
+        if (len > 0) {
+            char firstChar = (char) bb.get(offset + i);
+            if (firstChar < '0') { // Possible leading "+" or "-"
+                if (firstChar == '-') {
+                    negative = true;
+                    limit = Long.MIN_VALUE;
+                } else if (firstChar != '+')
+                    throw new NumberFormatException();
+
+                if (len == 1) // Cannot have lone "+" or "-"
+                    throw new NumberFormatException();
+                i++;
+            }
+            multmin = limit / RADIX;
+            while (i < len) {
+                // Accumulating negatively avoids surprises near MAX_VALUE
+                digit = Character.digit((char) bb.get(offset + i++), RADIX);
+                if (digit < 0) {
+                    throw new NumberFormatException();
+                }
+                if (result < multmin) {
+                    throw new NumberFormatException();
+                }
+                result *= RADIX;
+                if (result < limit + digit) {
+                    throw new NumberFormatException();
+                }
+                result -= digit;
+            }
+        } else {
+            throw new NumberFormatException();
+        }
+        return negative ? result : -result;
+    }
+
+
     //  ----------------------------------------------------
 
     public static FIXMessage decodeMessage(ByteBuffer bb, int offset,
@@ -310,7 +406,7 @@ public class CodeUtils {
         int sum = CodeUtils.calcCheckSum(bb, start, header.bodyLength + header.bodyLengthPos - start);
 
         if (trailer.checkSum != sum) {
-           throw new CoderException("Wrong checksum!");
+            throw new CoderException("Wrong checksum!");
         }
 
         return message;
@@ -329,12 +425,25 @@ public class CodeUtils {
         trailer.encode(bb);
     }
 
+
     public static int calcCheckSum(ByteBuffer bb, int offset, int length) {
         int cks = 0;
-        for (int idx = offset; idx < offset + length; idx++) {
-            cks += bb.get(idx);
+        for (int i = offset; i < offset + length; i++) {
+            cks += bb.get(i);
         }
 
-        return cks % 256;
+        return cks & 255;
     }
+
+
+    public static void main(String[] args) {
+        String str = "412442200000001";
+        ByteBuffer bb = ByteBuffer.wrap(str.getBytes());
+//        bb.flip();
+//        int x = parseInt(bb, 0, str.length());
+        long x = parseLong(bb, 0, str.length());
+        System.out.println(x);
+    }
+
+
 }
