@@ -7,7 +7,7 @@ public interface FIXMessage {
 
     String getType();
 
-//    byte[] getTypeBytes();
+    byte getSeparator();
 
     String encode();
 

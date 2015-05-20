@@ -1,13 +1,13 @@
 package com.mcscm.fixtools.test;
 
 import com.mcscm.fixtools.FIXMessage;
-import com.mcscm.fixtools.MessageHeader;
-import com.mcscm.fixtools.MessageTrailer;
 import com.mcscm.fixtools.utils.CodeUtils;
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.sample.FIXMessageFactory;
+import org.sample.Header;
 import org.sample.MarketDataIncrementalRefresh;
+import org.sample.Trailer;
 import org.sample.enums.MDBookType;
 import org.sample.enums.MDEntryType;
 import org.sample.enums.MDUpdateAction;
@@ -18,15 +18,19 @@ import java.util.Date;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
-public class DecodeTest2 {
+public class CoderTest2 {
 
     public static final FIXMessageFactory FACTORY = new FIXMessageFactory();
-    public static final MessageHeader HEADER = new MessageHeader();
-    public static final MessageTrailer TRAILER = new MessageTrailer();
+    //    public static final MessageHeader ENC_HEADER = new MessageHeader();
+//    public static final MessageTrailer ENC_TRAILER = new MessageTrailer();
+    public static final Header ENC_HEADER = new Header();
+    public static final Trailer ENC_TRAILER = new Trailer();
+    public static final Header DEC_HEADER = new Header();
+    public static final Trailer DEC_TRAILER = new Trailer();
     public static final double DELTA = 0.000001;
 
     @Test
-    public void testDecode() {
+    public void decodeFromQuickFixString() {
         String text = "8=FIXT.1.1\u00019=164\u000135=X\u000134=0\u000149=FixClient\u000152=20150519-08:06:05.155\u000156=FixServer\u00011021=2\u0001262=1000\u0001268=2\u0001279=1\u0001269=0\u000155=KZTK\u0001270=341\u0001271=100004\u0001279=1\u0001269=1\u000155=KZTK\u0001270=342.19\u0001271=200100\u000110=010\u0001";
 //        String text = "9=108\u000135=X\u00011021=2\u0001262=1000\u0001268=2\u0001279=1\u0001269=0\u000155=KZTK\u0001270=341\u0001271=100004\u0001279=1\u0001269=1\u000155=KZTK\u0001270=342.19\u0001271=200100\u000110=115\u0001";
         ByteBuffer bb = ByteBuffer.wrap(text.getBytes());
@@ -34,11 +38,11 @@ public class DecodeTest2 {
         final int offset = 0;
 
         MarketDataIncrementalRefresh mdInc =
-                (MarketDataIncrementalRefresh) CodeUtils.decodeMessage(bb, offset, HEADER, TRAILER, FACTORY);
+                (MarketDataIncrementalRefresh) CodeUtils.decodeMessage(bb, offset, ENC_HEADER, ENC_TRAILER, FACTORY);
 
-        System.out.println("beginString: " + HEADER.beginString);
-        System.out.println("bodyLength: " + HEADER.bodyLength);
-        System.out.println("msgType: " + HEADER.subHeader.msgType);
+//        System.out.println("beginString: " + ENC_HEADER.beginString);
+//        System.out.println("bodyLength: " + ENC_HEADER.bodyLength);
+//        System.out.println("msgType: " + ENC_HEADER.msgType);
         System.out.println();
 
         System.out.println("mDReqID: " + mdInc.mDReqID);
@@ -56,7 +60,7 @@ public class DecodeTest2 {
         }
 
         ByteBuffer encode = ByteBuffer.allocate(1024);
-        CodeUtils.encodeMessage(encode, 0, mdInc, HEADER, TRAILER);
+        CodeUtils.encodeMessage(encode, 0, mdInc, ENC_HEADER, ENC_TRAILER);
         encode.flip();
 
         System.out.println();
@@ -64,7 +68,7 @@ public class DecodeTest2 {
     }
 
     @Test
-    public void testEncode() {
+    public void encodeAndDecode() {
         MarketDataIncrementalRefresh mes = new MarketDataIncrementalRefresh();
         mes.mDReqID = "1234";
         mes.mDBookType = MDBookType.TOP_OF_BOOK;
@@ -88,30 +92,27 @@ public class DecodeTest2 {
         mes.addNoMDEntries(noMd2);
 
         ByteBuffer bb = ByteBuffer.allocateDirect(1024);
-        final MessageHeader HEADER = new MessageHeader();
-        HEADER.beginString = "FIXT.1.1";
-        HEADER.subHeader.mesSeqNum = 10;
-        HEADER.subHeader.senderCompID = "FIX-Server";
-        HEADER.subHeader.targetCompID = "FIX-Client";
-        HEADER.subHeader.sendingTime = new Date();
+        ENC_HEADER.beginString = "FIXT.1.1";
+        ENC_HEADER.msgSeqNum = 10;
+        ENC_HEADER.senderCompID = "FIX-Server";
+        ENC_HEADER.targetCompID = "FIX-Client";
+        ENC_HEADER.sendingTime = new Date();
 
-        final MessageTrailer TRAILER = new MessageTrailer();
-
-        CodeUtils.encodeMessage(bb, 0, mes, HEADER, TRAILER);
-
-        System.out.println(CodeUtils.toString(bb));
-
-        final MessageHeader DECODE_HEADER = new MessageHeader();
-        final MessageTrailer DECODE_TRAILER = new MessageTrailer();
         final FIXMessageFactory FACTORY = new FIXMessageFactory();
 
-        FIXMessage decodedMes = CodeUtils.decodeMessage(bb, 0, DECODE_HEADER, DECODE_TRAILER, FACTORY);
 
-        TestCase.assertEquals(HEADER.beginString, DECODE_HEADER.beginString);
-        TestCase.assertEquals(HEADER.subHeader.mesSeqNum, DECODE_HEADER.subHeader.mesSeqNum);
-        TestCase.assertEquals(HEADER.subHeader.senderCompID, DECODE_HEADER.subHeader.senderCompID);
-        TestCase.assertEquals(HEADER.subHeader.targetCompID, DECODE_HEADER.subHeader.targetCompID);
-        TestCase.assertEquals(HEADER.subHeader.sendingTime, DECODE_HEADER.subHeader.sendingTime);
+        CodeUtils.encodeMessage(bb, 0, mes, ENC_HEADER, ENC_TRAILER);
+        bb.flip();
+        System.out.println(CodeUtils.toString(bb));
+        bb.flip();
+
+        FIXMessage decodedMes = CodeUtils.decodeMessage(bb, 0, DEC_HEADER, DEC_TRAILER, FACTORY);
+
+        TestCase.assertEquals(ENC_HEADER.beginString, DEC_HEADER.beginString);
+        TestCase.assertEquals(ENC_HEADER.msgSeqNum, DEC_HEADER.msgSeqNum);
+        TestCase.assertEquals(ENC_HEADER.senderCompID, DEC_HEADER.senderCompID);
+        TestCase.assertEquals(ENC_HEADER.targetCompID, DEC_HEADER.targetCompID);
+//        TestCase.assertEquals(ENC_HEADER.sendingTime, DECODE_HEADER.sendingTime);
 
         assertTrue(decodedMes instanceof MarketDataIncrementalRefresh);
         MarketDataIncrementalRefresh decoded = (MarketDataIncrementalRefresh) decodedMes;
@@ -130,6 +131,8 @@ public class DecodeTest2 {
             TestCase.assertEquals(exp.securityID, act.securityID);
             TestCase.assertEquals(exp.mDEntrySize, act.mDEntrySize);
         }
+
+
 
     }
 }

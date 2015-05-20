@@ -147,7 +147,8 @@ public class FieldDescriptor {
                     mthd = "CodeUtils.put(buf, Character.toString(%s))";
                     break;
                 case "boolean":
-                    mthd = "buf.put(Boolean.toString(%s).getBytes())";
+//                    mthd = "buf.put(Boolean.toString(%s).getBytes())";
+                    mthd = "CodeUtils.put(buf, %s ? \"Y\" : \"N\")";
                     break;
                 case "Date":
                     if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
@@ -217,7 +218,7 @@ public class FieldDescriptor {
             case "char":
                 return "CodeUtils.getChar(%s, %s, %s)";
             case "boolean":
-                return "Boolean.valueOf(CodeUtils.getString(%s, %s, %s))";
+                return "\"Y\".equals(CodeUtils.getString(%s, %s, %s))";
             case "Date":
                 if (type == FieldType.UTCTIMESTAMP || type == FieldType.TZTIMESTAMP) {
                     return "DateFormatter.parseDateTime(CodeUtils.getString(%s, %s, %s))";

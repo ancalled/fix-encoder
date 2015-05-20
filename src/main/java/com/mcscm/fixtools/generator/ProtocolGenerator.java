@@ -64,6 +64,19 @@ public class ProtocolGenerator {
             fieldTypes.put(name, new FieldDescriptor(num, name, type, enumField));
         }
 
+        nodes = eval("/fix/header");
+        if (nodes.getLength() > 0) {
+            String classname = "Header";
+            String body = generateClass((Element) nodes.item(0), false, 0, new HashSet<>(), classname);
+            Files.write(outDir.resolve(classname + ".java"), body.getBytes());
+        }
+        nodes = eval("/fix/trailer");
+        if (nodes.getLength() > 0) {
+            String classname = "Trailer";
+            String body = generateClass((Element) nodes.item(0), false, 0, new HashSet<>(), classname);
+            Files.write(outDir.resolve(classname + ".java"), body.getBytes());
+        }
+
         System.out.println("Parsing messages...");
 
         nodes = eval("/fix/messages/message");
@@ -83,11 +96,15 @@ public class ProtocolGenerator {
 
     }
 
+
     private String generateClass(Element node, boolean inner, int level, Set<String> imports) {
+        String classname = node.getAttribute("name");
+        return generateClass(node, inner, level, imports, classname);
+    }
+
+    private String generateClass(Element node, boolean inner, int level, Set<String> imports, String classname) {
 
         String indent = indent(level);
-
-        String classname = node.getAttribute("name");
 
         addImports(imports, node, classname);
 
@@ -331,11 +348,11 @@ public class ProtocolGenerator {
                         indent + "    return \"%s\";\n" +
                         indent + "}\n\n" +
 //
-//                        indent + "public byte[] getTypeBytes() {\n" +
-//                        indent + "    return MSG_TYPE;\n" +
-//                        indent + "}\n\n" +
+                        indent + "public byte getSeparator() {\n" +
+                        indent + "    return SEP;\n" +
+                        indent + "}\n\n" +
 
-                indent + "public void clearWarnings() {\n" +
+                        indent + "public void clearWarnings() {\n" +
                         indent + "    parseErrors.clear();\n" +
                         indent + "}\n\n" +
 

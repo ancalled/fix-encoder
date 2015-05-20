@@ -149,7 +149,7 @@ public class DecodeTest {
             if (bb.position() >= bb.capacity()) break;
             byte b = bb.get(curr++);
 
-            if (b == SEP) {
+            if (b == CodeUtils.SEP) {
                 if (search.get() == null) {
                     state = ERROR_ACCURED;
                     return -1;
@@ -164,7 +164,7 @@ public class DecodeTest {
                 curr = startPos;
                 continue;
 
-            } else if (b == EQ) {
+            } else if (b == CodeUtils.EQ) {
                 state = VALUE_PARSING;
                 eqPos = curr;
                 continue;
@@ -195,7 +195,7 @@ public class DecodeTest {
             if (bb.position() >= bb.capacity()) break;
             byte b = bb.get(curr++);
 
-            if (b == SEP) {
+            if (b == CodeUtils.SEP) {
                 if (search.get() == null) {
                     state = ERROR_ACCURED;
                     return -1;
@@ -209,7 +209,7 @@ public class DecodeTest {
                 curr = startPos;
                 continue;
 
-            } else if (b == EQ) {
+            } else if (b == CodeUtils.EQ) {
                 state = VALUE_PARSING;
                 eqPos = curr;
                 continue;

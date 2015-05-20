@@ -1,6 +1,9 @@
 package com.mcscm.fixtools.utils;
 
-import com.mcscm.fixtools.*;
+import com.mcscm.fixtools.FIXMessage;
+import com.mcscm.fixtools.MessageFactory;
+import org.sample.Header;
+import org.sample.Trailer;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -8,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 public class CodeUtils {
 
     public static final int RADIX = 10;
+    public static final byte SEP = 1;
+    public static final byte EQ = 61;
 
     public static void put(ByteBuffer bb, String str) {
         int pos = bb.position();
@@ -396,49 +401,118 @@ public class CodeUtils {
 
     //  ----------------------------------------------------
 
+//    public static FIXMessage decodeMessage(ByteBuffer bb, int offset,
+//                                           MessageHeader header,
+//                                           MessageTrailer trailer,
+//                                           MessageFactory factory) {
+//        if (header == null || factory == null) return null;
+//
+//        int start = offset;
+//        offset = header.decode(bb, offset);
+//        offset = header.subHeader.decode(bb, offset);
+//
+//        FIXMessage message = factory.create(header.subHeader.msgType);
+//        offset = message.decode(bb, offset);
+//
+//        trailer.decode(bb, offset);
+//
+//        int sum = CodeUtils.calcCheckSum(bb, start, header.bodyLength + header.subHeader.pos - start);
+//
+//        if (trailer.checkSum != sum) {
+//            throw new CoderException("Wrong checksum!");
+//        }
+//
+//        return message;
+//    }
+
     public static FIXMessage decodeMessage(ByteBuffer bb, int offset,
-                                           MessageHeader header,
-                                           MessageTrailer trailer,
+                                           Header header,
+                                           Trailer trailer,
                                            MessageFactory factory) {
         if (header == null || factory == null) return null;
 
         int start = offset;
         offset = header.decode(bb, offset);
-        offset = header.subHeader.decode(bb, offset);
 
-        FIXMessage message = factory.create(header.subHeader.msgType);
+        FIXMessage message = factory.create(header.msgType);
         offset = message.decode(bb, offset);
 
         trailer.decode(bb, offset);
 
-        int sum = CodeUtils.calcCheckSum(bb, start, header.bodyLength + header.subHeader.pos - start);
+//        final int len = header.bodyLength + header.pos - start;
+//        int sum = CodeUtils.calcCheckSum(bb, start, len);
 
-        if (trailer.checkSum != sum) {
-            throw new CoderException("Wrong checksum!");
-        }
+//        if (trailer.checkSum != sum) {
+//            throw new CoderException("Wrong checksum!");
+//        }
 
         return message;
     }
 
     public static final ByteBuffer TEMP_BUF = ByteBuffer.allocate(1024);
 
-    public static void encodeMessage(ByteBuffer bb, int offset,
-                                     FIXMessage mes,
-                                     MessageHeader header,
-                                     MessageTrailer trailer) {
+
+//    public static int encodeMessage(ByteBuffer bb, int offset,
+//                                    FIXMessage mes,
+//                                    MessageHeader header,
+//                                    MessageTrailer trailer) {
+//        bb.position(offset);
+//
+//        header.subHeader.msgType = mes.getType();
+//
+//        TEMP_BUF.position(0);
+//        header.subHeader.encode(TEMP_BUF);
+//        mes.encode(TEMP_BUF);
+//        header.bodyLength = TEMP_BUF.position();
+//        header.encode(bb);
+////        bb.put(TEMP_BUF);
+//        copyTo(TEMP_BUF, bb, 0, header.bodyLength);
+//        trailer.checkSum = CodeUtils.calcCheckSum(bb, offset, bb.position());
+//        trailer.encode(bb);
+//        return bb.position() - offset;
+//    }
+
+
+    public static int encodeMessage(ByteBuffer bb, int offset,
+                                    FIXMessage mes,
+                                    Header header,
+                                    Trailer trailer) {
+
         bb.position(offset);
 
-        header.subHeader.msgType = mes.getType();
+        header.msgType = mes.getType();
 
+        //removing first 2 fields to calc body and header length
+        String beginString = header.beginString;
+        header.beginString = null;
+        header.bodyLength = 0;
+
+        //encoding to temp buffer
         TEMP_BUF.position(0);
-        header.subHeader.encode(TEMP_BUF);
+        header.encode(TEMP_BUF);
         mes.encode(TEMP_BUF);
+
+        //restore values
         header.bodyLength = TEMP_BUF.position();
-        header.encode(bb);
-//        bb.put(TEMP_BUF);
+        header.beginString = beginString;
+
+        //manually encode first 2 fields
+        bb.put(Header.TAG_BEGINSTRING);
+        bb.put(EQ);
+        CodeUtils.put(bb, beginString);
+        bb.put(SEP);
+
+        bb.put(Header.TAG_BODYLENGTH);
+        bb.put(EQ);
+        CodeUtils.put(bb, header.bodyLength);
+        bb.put(SEP);
+
         copyTo(TEMP_BUF, bb, 0, header.bodyLength);
-        trailer.checkSum = CodeUtils.calcCheckSum(bb, offset, bb.position());
+
+        //encoding tail
+        trailer.checkSum = String.format("%03d", CodeUtils.calcCheckSum(bb, offset, bb.position()));
         trailer.encode(bb);
+        return bb.position() - offset;
     }
 
 
@@ -450,7 +524,6 @@ public class CodeUtils {
 
         return cks & 255;
     }
-
 
 
 }

@@ -17,12 +17,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-public class TestEncode {
+public class CoderTest1 {
 
     public static final double DELTA = 0.000001;
 
     @Test
-    public void encodeDecode() {
+    public void encodeAndDecodeExecReport_StringBuilder() {
         ExecutionReport expected = new ExecutionReport();
         expected.orderID = "131012";
         expected.symbol = "I0001";
@@ -50,7 +50,7 @@ public class TestEncode {
     }
 
     @Test
-    public void encodeDecode2() {
+    public void encodeAndDecodeMarketData_StringBuilder() {
         MarketDataIncrementalRefresh exp = new MarketDataIncrementalRefresh();
         exp.mDReqID = "1234";
         exp.mDBookType = MDBookType.TOP_OF_BOOK;
@@ -93,17 +93,10 @@ public class TestEncode {
         assertEquals(exp.applQueueDepth, restored.applQueueDepth);
     }
 
-    @Test
-    public void testDecode3() {
-        String text = "262=1234\u0001268=2\u0001279=0\u0001269=0\u000148=56789\u0001270=50.0\u0001271=50\u0001346=1\u0001279=0\u0001269=1\u000148=56789\u0001270=50.0\u0001271=50\u0001346=1\u0001";
-        MarketDataIncrementalRefresh md = new MarketDataIncrementalRefresh();
-        md.decode(text);
 
-        System.out.println(md.mDReqID);
-    }
     
     @Test
-    public void testDecode4() {
+    public void decodeQFIXString_ByteBBuffer() {
 //        String text = "9=108\u000135=X\u00011021=2\u0001262=1000\u0001268=2\u0001279=1\u0001269=0\u000155=KZTK\u0001270=341\u0001271=100004\u0001279=1\u0001269=1\u000155=KZTK\u0001270=342.19\u0001271=200100\u000110=115\u0001";
         String text = "1021=2\u0001262=1000\u0001268=2\u0001279=1\u0001269=0\u000155=KZTK\u0001270=341\u0001271=100004\u0001279=1\u0001269=1\u000155=KZTK\u0001270=342.19\u0001271=200100";
         ByteBuffer bb = ByteBuffer.wrap(text.getBytes());
@@ -125,13 +118,11 @@ public class TestEncode {
             System.out.printf("noMd[%d].mDEntrySize: %s\n", i, grp.mDEntrySize);
             System.out.printf("noMd[%d].numberOfOrders: %s\n", i, grp.numberOfOrders);
         }
-
-     
     }
 
 
     @Test
-    public void testEncodeByteBuffer() {
+    public void encodeAndDecodeExecReport_ByteBBuffer() {
         ByteBuffer bb = ByteBuffer.allocate(1024);
 
         ExecutionReport expected = new ExecutionReport();
@@ -168,7 +159,7 @@ public class TestEncode {
 
 
     @Test
-    public void testEncodeByteBuffer2() {
+    public void encodeAndDecodeMarketData_ByteBBuffer() {
         ByteBuffer bb = ByteBuffer.allocate(1024);
 
         MarketDataIncrementalRefresh exp = new MarketDataIncrementalRefresh();
