@@ -17,5 +17,13 @@ public interface FIXMessage {
 
     int decode(ByteBuffer bb, int offset);
 
+    int decode(ByteBuffer bb, int offset, int length);
+
+    String printParsed(String indent);
+
+    void printWarnings();
+
+    void clearWarnings();
+
 
 }

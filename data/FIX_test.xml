@@ -38,34 +38,6 @@
     </trailer>
 
     <messages>
-        <message name="ExecutionReport" msgtype="8" msgcat="app">
-            <field name="OrderID" required="Y"/>
-            <field name="ExecID" required="Y"/>
-            <field name="ExecType" required="Y"/>
-            <field name="OrdStatus" required="Y"/>
-            <field name="OrdRejReason" required="N"/>
-            <field name="Account" required="N"/>
-            <component name="Instrument" required="Y"/>
-            <field name="Side" required="Y"/>
-            <field name="Price" required="N"/>
-            <field name="TimeInForce" required="N"/>
-            <field name="LeavesQty" required="Y"/>
-            <field name="CumQty" required="Y"/>
-            <field name="TransactTime" required="N"/>
-        </message>
-
-        <message name="MarketDataIncrementalRefresh" msgtype="X" msgcat="app">
-            <field name="MDReqID" required="N"/>
-            <component name="MDIncGrp" required="Y"/>
-            <field name="ApplQueueDepth" required="N"/>
-            <field name="ApplQueueResolution" required="N"/>
-            <field name="MDBookType" required="N"/>
-
-            <!--<field name="TradeDate" required="N"/>-->
-            <!--<component name="RoutingGrp" required="N"/>-->
-        </message>
-
-
         <message msgcat='admin' msgtype='A' name='Logon'>
             <field name='EncryptMethod' required='Y'/>
             <field name='HeartBtInt' required='Y'/>
@@ -87,6 +59,63 @@
             <field name='EncryptedNewPassword' required='N'/>
             <component name='MsgTypeGrp' required='N'/>
         </message>
+
+
+
+        <message name="SecurityListRequest" msgtype="x" msgcat="app">
+            <field name="SecurityReqID" required="Y"/>
+            <field name="SecurityListRequestType" required="Y"/>
+            <component name="Instrument" required="N"/>
+            <!--<component name="InstrumentExtension" required="N"/>-->
+            <!--<component name="FinancingDetails" required="N"/>-->
+            <!--<component name="UndInstrmtGrp" required="N"/>-->
+            <!--<component name="InstrmtLegGrp" required="N"/>-->
+            <field name="Currency" required="N"/>
+            <field name="Text" required="N"/>
+            <field name="EncodedTextLen" required="N"/>
+            <field name="EncodedText" required="N"/>
+            <!--<field name="TradingSessionID" required="N"/>-->
+            <!--<field name="TradingSessionSubID" required="N"/>-->
+            <field name="SubscriptionRequestType" required="N"/>
+        </message>
+        <message name="SecurityList" msgtype="y" msgcat="app">
+            <field name="SecurityReqID" required="N"/>
+            <field name="SecurityResponseID" required="N"/>
+            <field name="SecurityRequestResult" required="N"/>
+            <field name="TotNoRelatedSym" required="N"/>
+            <field name="LastFragment" required="N"/>
+            <component name="SecListGrp" required="N"/>
+            <field name="SecurityReportID" required="N"/>
+            <field name="ClearingBusinessDate" required="N"/>
+        </message>
+
+
+        <message name="ExecutionReport" msgtype="8" msgcat="app">
+            <field name="OrderID" required="Y"/>
+            <field name="ExecID" required="Y"/>
+            <field name="ExecType" required="Y"/>
+            <field name="OrdStatus" required="Y"/>
+            <field name="OrdRejReason" required="N"/>
+            <field name="Account" required="N"/>
+            <component name="Instrument" required="Y"/>
+            <field name="Side" required="Y"/>
+            <field name="Price" required="N"/>
+            <field name="TimeInForce" required="N"/>
+            <field name="LeavesQty" required="Y"/>
+            <field name="CumQty" required="Y"/>
+            <field name="TransactTime" required="N"/>
+        </message>
+        <message name="MarketDataIncrementalRefresh" msgtype="X" msgcat="app">
+            <field name="MDReqID" required="N"/>
+            <component name="MDIncGrp" required="Y"/>
+            <field name="ApplQueueDepth" required="N"/>
+            <field name="ApplQueueResolution" required="N"/>
+            <field name="MDBookType" required="N"/>
+            <!--<field name="TradeDate" required="N"/>-->
+            <!--<component name="RoutingGrp" required="N"/>-->
+        </message>
+
+
 
         <message msgcat='admin' msgtype='0' name='Heartbeat'>
             <field name='TestReqID' required='N'/>
@@ -112,6 +141,29 @@
             <field name="Symbol" required="N"/>
             <field name="SecurityID" required="N"/>
         </component>
+        <component name="SecListGrp">
+            <group name="NoRelatedSym" required="N">
+                <component name="Instrument"/>
+                <!--<component name="InstrumentExtension"/>-->
+                <!--<component name="FinancingDetails"/>-->
+                <!--<component name="UndInstrmtGrp"/>-->
+                <!--<field name="Currency" required="N"/>-->
+                <!--<component name="Stipulations"/>-->
+                <!--<component name="InstrmtLegSecListGrp"/>-->
+                <!--<component name="SpreadOrBenchmarkCurveData"/>-->
+                <!--<component name="YieldData"/>-->
+                <!--<field name="RoundLot" required="N"/>-->
+                <!--<field name="MinTradeVol" required="N"/>-->
+                <!--<field name="TradingSessionID" required="N"/>-->
+                <!--<field name="TradingSessionSubID" required="N"/>-->
+                <!--<field name="ExpirationCycle" required="N"/>-->
+                <field name="Text" required="N"/>
+                <field name="EncodedTextLen" required="N"/>
+                <field name="EncodedText" required="N"/>
+            </group>
+        </component>
+
+
         <component name="MDIncGrp">
             <group name="NoMDEntries" required="Y">
                 <field name="MDUpdateAction" required="Y"/>
@@ -127,9 +179,10 @@
     <fields>
         <field number="1" name="Account" type="STRING"/>
 
-        <field number="37" name="OrderID" type="STRING"/>
         <field number="14" name="CumQty" type="QTY"/>
+        <field number="15" name="Currency" type="CURRENCY"/>
         <field number="17" name="ExecID" type="STRING"/>
+        <field number="37" name="OrderID" type="STRING"/>
         <field number="150" name="ExecType" type="CHAR">
             <value enum="0" description="NEW"/>
             <value enum="1" description="PARTIAL_FILL"/>
@@ -170,6 +223,7 @@
             <value enum="1" description="UNKNOWN_SYMBOL"/>
             <value enum="2" description="EXCHANGE_CLOSED"/>
         </field>
+        <field number="146" name="NoRelatedSym" type="NUMINGROUP"/>
         <field number="151" name="LeavesQty" type="QTY"/>
 
         <field number="262" name="MDReqID" type="STRING"/>
@@ -211,7 +265,9 @@
             <value enum="3" description="DELETE_THRU"/>
             <value enum="4" description="DELETE_FROM"/>
         </field>
+        <field number="320" name="SecurityReqID" type="STRING"/>
         <field number="346" name="NumberOfOrders" type="INT"/>
+        <field number="715" name="ClearingBusinessDate" type="LOCALMKTDATE"/>
         <field number="813" name="ApplQueueDepth" type="INT"/>
         <field number="814" name="ApplQueueResolution" type="INT">
             <value enum="0" description="NO_ACTION_TAKEN"/>
@@ -219,6 +275,7 @@
             <value enum="2" description="OVERLAY_LAST"/>
             <value enum="3" description="END_SESSION"/>
         </field>
+        <field number="964" name="SecurityReportID" type="INT"/>
         <field number="1021" name="MDBookType" type="INT">
             <value enum="1" description="TOP_OF_BOOK"/>
             <value enum="2" description="PRICE_DEPTH"/>
@@ -275,6 +332,12 @@
         <field name='DeliverToLocationID' number='145' type='STRING'/>
         <field name='XmlDataLen' number='212' type='LENGTH'/>
         <field name='XmlData' number='213' type='DATA'/>
+        <field number="263" name="SubscriptionRequestType" type="CHAR">
+            <value enum="0" description="SNAPSHOT"/>
+            <value enum="1" description="SNAPSHOT_PLUS_UPDATES"/>
+            <value enum="2" description="DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST"/>
+        </field>
+        <field number="322" name="SecurityResponseID" type="STRING"/>
         <field number='347' name='MessageEncoding' type='STRING'>
             <value enum='ISO-2022-JP' description='ISO_2022_JP'/>
             <value enum='EUC-JP' description='EUC_JP'/>
@@ -313,14 +376,32 @@
             <value description='RECEIVE' enum='R'/>
             <value description='SEND' enum='S'/>
         </field>
+        <field number="393" name="TotNoRelatedSym" type="INT"/>
         <field name='TestMessageIndicator' number='464' type='BOOLEAN'/>
         <field name='Username' number='553' type='STRING'/>
         <field name='Password' number='554' type='STRING'/>
+        <field number="559" name="SecurityListRequestType" type="INT">
+            <value enum="0" description="SYMBOL"/>
+            <value enum="1" description="SECURITYTYPE_AND_OR_CFICODE"/>
+            <value enum="2" description="PRODUCT"/>
+            <value enum="3" description="TRADINGSESSIONID"/>
+            <value enum="4" description="ALL_SECURITIES"/>
+        </field>
+        <field number="560" name="SecurityRequestResult" type="INT">
+            <value enum="0" description="VALID_REQUEST"/>
+            <value enum="1" description="INVALID_OR_UNSUPPORTED_REQUEST"/>
+            <value enum="2" description="NO_INSTRUMENTS_FOUND_THAT_MATCH_SELECTION_CRITERIA"/>
+            <value enum="3" description="NOT_AUTHORIZED_TO_RETRIEVE_INSTRUMENT_DATA"/>
+            <value enum="4" description="INSTRUMENT_DATA_TEMPORARILY_UNAVAILABLE"/>
+            <value enum="5" description="REQUEST_FOR_INSTRUMENT_DATA_NOT_SUPPORTED"/>
+        </field>
         <field name='NoHops' number='627' type='NUMINGROUP'/>
         <field name='HopCompID' number='628' type='STRING'/>
         <field name='HopSendingTime' number='629' type='UTCTIMESTAMP'/>
         <field name='HopRefID' number='630' type='SEQNUM'/>
+
         <field name='NextExpectedMsgSeqNum' number='789' type='SEQNUM'/>
+        <field number="893" name="LastFragment" type="BOOLEAN"/>
         <field name='ApplVerID' number='1128' type='STRING'>
             <value description='FIX27' enum='0'/>
             <value description='FIX30' enum='1'/>

@@ -360,8 +360,7 @@ public class ProtocolGenerator {
                         indent + "    for (String er: parseErrors) {\n" +
                         indent + "        System.out.println(er);\n" +
                         indent + "    }\n" +
-                        indent + "}\n\n"
-                ,
+                        indent + "}\n\n",
                 msgtype));
 
         generatePropertiesAccess(sb, el, indent);
@@ -372,7 +371,32 @@ public class ProtocolGenerator {
         generateDecodeBBMethod(sb, indent, className);
 
         sb.append("\n");
+        sb.append(indent).append("@Override\n");
+        sb.append(indent).append("public String toString() {\n");
+        sb.append(indent).append("    return \"").append(className).append(" {\" + \n");
+        forEach(el, 0, (f, i) -> sb.append(String.format(
+                indent + "    \"%s%s='\" + %s + '\\'' +\n"
+                , (i > 0 ? ", " : ""), f.fieldName, f.fieldName)));
+        sb.append(indent).append("    '}';\n");
+        sb.append(indent).append("}\n");
+
+
+        sb.append("\n");
+        sb.append(indent).append("public String printParsed(String indent) {\n");
+        sb.append(indent).append("    StringBuilder sb = new StringBuilder();\n");
+        forEach(el, 0, (f, i) -> sb.append(
+                String.format(
+                        indent + "    if (parsed.get(%d)) {\n" +
+                                indent + "        sb.append(indent).append(\"%s\").append(\": '\").append(%s).append(\"\\'\\n\");\n" +
+                                indent + "    }\n",
+                        i, f.fieldName, f.fieldName
+                )));
+        sb.append(indent).append("    return sb.toString();\n");
+        sb.append(indent).append("}\n");
+
+        sb.append("\n");
     }
+
 
     private void generatePropertiesAccess(StringBuilder sb, Element node, String indent) {
         forEach(node, 0, (f, i) -> f.appendPropertyAccess(sb, indent));
@@ -482,50 +506,57 @@ public class ProtocolGenerator {
         sb.append(String.format(
                 indent + "enum DecodeState {KEY_PARSING, VALUE_PARSING, ERROR_ACCURED}\n\n" +
 
-                        indent + "public int decode(ByteBuffer bb, int offset) {\n\n" +
+                        indent + "public int decode(ByteBuffer bb, int offset) {\n" +
+                        indent + "    return decode(bb, offset, bb.limit());\n" +
+                        indent + "}\n\n" +
+
+                        indent + "public int decode(ByteBuffer bb, int offset, int length) {\n\n" +
+
+                        indent + "    parsed.clear();\n" +
 
                         indent + "    DecodeState state = DecodeState.KEY_PARSING;\n" +
                         indent + "    RadixTree.Node<FieldDecoder<%s>> search = TAGS_TREE.root;\n\n" +
 
-                        indent + "    int startPos = offset;\n" +
-                        indent + "    int eqPos = startPos;\n" +
-                        indent + "    int curr = startPos;\n\n" +
+                        indent + "    int start = offset;\n" +
+                        indent + "    int eq = start;\n" +
+                        indent + "    int curr = start;\n" +
+                        indent + "    int end = Math.min(offset + length, bb.limit());\n\n" +
 
-                        indent + "    for (; ; ) {\n" +
-                        indent + "        if (curr >= bb.limit()) break;\n" +
+                        indent + "    for (;;) {\n" +
+                        indent + "        if (curr >= end) break;\n" +
                         indent + "        byte b = bb.get(curr++);\n\n" +
 
                         indent + "        if (b == SEP) {\n" +
                         indent + "            if (search.get() == null) {\n" +
                         indent + "                state = DecodeState.ERROR_ACCURED;\n" +
-                        indent + "                parseErrors.add(\"Unknown tag: \"  + CodeUtils.toString(bb, startPos, curr - startPos));\n" +
-                        indent + "                return startPos;\n" +
+                        indent + "                parseErrors.add(\"Unknown tag: \"  + CodeUtils.toString(bb, start, curr - start));\n" +
+                        indent + "                return start;\n" +
                         indent + "            }\n\n" +
 
-                        indent + "            int res = search.get().decode(bb, eqPos, curr - eqPos - 1, this);\n" +
-                        indent + "            if (res < 0) return startPos;\n\n" +
+                        indent + "            int r = search.get().decode(bb, eq, curr - eq - 1, this);\n" +
+                        indent + "            if (r < 0) return start;\n\n" +
 
                         indent + "            search = TAGS_TREE.root;\n" +
                         indent + "            state = DecodeState.KEY_PARSING;\n" +
-                        indent + "            startPos = res;\n" +
-                        indent + "            curr = startPos;\n" +
+                        indent + "            start = r;\n" +
+                        indent + "            curr = start;\n" +
                         indent + "            continue;\n\n" +
 
                         indent + "        } else if (b == EQ) {\n" +
                         indent + "            state = DecodeState.VALUE_PARSING;\n" +
-                        indent + "            eqPos = curr;\n" +
+                        indent + "            eq = curr;\n" +
                         indent + "            continue;\n" +
                         indent + "        }\n\n" +
 
                         indent + "        if (state == DecodeState.KEY_PARSING) {\n" +
                         indent + "            search = search.find(b);\n" +
                         indent + "            if (search == null) {\n" +
-                        indent + "                return startPos;\n" +
+                        indent + "                return start;\n" +
                         indent + "            }\n" +
                         indent + "        }\n" +
                         indent + "    }\n\n" +
 
-                        indent + "    return curr;\n" +
+                        indent + "    return offset + length;\n" +
                         indent + "}\n"
                 , className
         ));

@@ -426,18 +426,27 @@ public class CodeUtils {
 //    }
 
     public static FIXMessage decodeMessage(ByteBuffer bb, int offset,
+                                           int length,
                                            Header header,
                                            Trailer trailer,
                                            MessageFactory factory) {
         if (header == null || factory == null) return null;
 
-        int start = offset;
-        offset = header.decode(bb, offset);
+        offset = header.decode(bb, offset, length);
+        if (!header.parseErrors.isEmpty()) {
+            header.printWarnings();
+            header.clearWarnings();
+        }
 
         FIXMessage message = factory.create(header.msgType);
-        offset = message.decode(bb, offset);
+        offset = message.decode(bb, offset, length);
 
-        trailer.decode(bb, offset);
+        message.printWarnings();
+        message.clearWarnings();
+
+
+        offset = trailer.decode(bb, offset);
+        bb.position(offset);
 
 //        final int len = header.bodyLength + header.pos - start;
 //        int sum = CodeUtils.calcCheckSum(bb, start, len);
@@ -451,26 +460,6 @@ public class CodeUtils {
 
     public static final ByteBuffer TEMP_BUF = ByteBuffer.allocate(1024);
 
-
-//    public static int encodeMessage(ByteBuffer bb, int offset,
-//                                    FIXMessage mes,
-//                                    MessageHeader header,
-//                                    MessageTrailer trailer) {
-//        bb.position(offset);
-//
-//        header.subHeader.msgType = mes.getType();
-//
-//        TEMP_BUF.position(0);
-//        header.subHeader.encode(TEMP_BUF);
-//        mes.encode(TEMP_BUF);
-//        header.bodyLength = TEMP_BUF.position();
-//        header.encode(bb);
-////        bb.put(TEMP_BUF);
-//        copyTo(TEMP_BUF, bb, 0, header.bodyLength);
-//        trailer.checkSum = CodeUtils.calcCheckSum(bb, offset, bb.position());
-//        trailer.encode(bb);
-//        return bb.position() - offset;
-//    }
 
 
     public static int encodeMessage(ByteBuffer bb, int offset,

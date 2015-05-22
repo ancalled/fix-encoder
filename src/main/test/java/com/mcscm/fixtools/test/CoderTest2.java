@@ -35,10 +35,8 @@ public class CoderTest2 {
 //        String text = "9=108\u000135=X\u00011021=2\u0001262=1000\u0001268=2\u0001279=1\u0001269=0\u000155=KZTK\u0001270=341\u0001271=100004\u0001279=1\u0001269=1\u000155=KZTK\u0001270=342.19\u0001271=200100\u000110=115\u0001";
         ByteBuffer bb = ByteBuffer.wrap(text.getBytes());
 
-        final int offset = 0;
-
         MarketDataIncrementalRefresh mdInc =
-                (MarketDataIncrementalRefresh) CodeUtils.decodeMessage(bb, offset, ENC_HEADER, ENC_TRAILER, FACTORY);
+                (MarketDataIncrementalRefresh) CodeUtils.decodeMessage(bb, bb.position(), bb.limit(), ENC_HEADER, ENC_TRAILER, FACTORY);
 
 //        System.out.println("beginString: " + ENC_HEADER.beginString);
 //        System.out.println("bodyLength: " + ENC_HEADER.bodyLength);
@@ -102,11 +100,12 @@ public class CoderTest2 {
 
 
         CodeUtils.encodeMessage(bb, 0, mes, ENC_HEADER, ENC_TRAILER);
+        System.out.println("\tpos / limit: " + bb.position() + " / " + bb.limit());
         bb.flip();
         System.out.println(CodeUtils.toString(bb));
         bb.flip();
 
-        FIXMessage decodedMes = CodeUtils.decodeMessage(bb, 0, DEC_HEADER, DEC_TRAILER, FACTORY);
+        FIXMessage decodedMes = CodeUtils.decodeMessage(bb, bb.position(), bb.limit(), DEC_HEADER, DEC_TRAILER, FACTORY);
 
         TestCase.assertEquals(ENC_HEADER.beginString, DEC_HEADER.beginString);
         TestCase.assertEquals(ENC_HEADER.msgSeqNum, DEC_HEADER.msgSeqNum);
