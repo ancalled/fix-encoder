@@ -138,13 +138,7 @@ public class CodeUtils {
     }
 
 
-    public static byte[] intToBytes(int i) {
-        int size = (i < 0) ? stringSize(-i) + 1
-                : stringSize(i);
-        byte[] bytes = new byte[size];
-        getBytes(i, size, bytes);
-        return bytes;
-    }
+
 
     public static String getString(ByteBuffer bb, int offset, int length) {
         bb.position(offset);
@@ -348,7 +342,6 @@ public class CodeUtils {
     public static long parseLong(ByteBuffer bb, int offset, int len)
             throws NumberFormatException {
 
-
         long result = 0;
         boolean negative = false;
         int i = 0;
@@ -433,17 +426,16 @@ public class CodeUtils {
         if (header == null || factory == null) return null;
 
         offset = header.decode(bb, offset, length);
-        if (!header.parseErrors.isEmpty()) {
-            header.printWarnings();
-            header.clearWarnings();
-        }
+        header.printWarnings();
+        header.clearWarnings();
 
         FIXMessage message = factory.create(header.msgType);
+        if (message == null) return null;
+
         offset = message.decode(bb, offset, length);
 
         message.printWarnings();
         message.clearWarnings();
-
 
         offset = trailer.decode(bb, offset);
         bb.position(offset);
@@ -459,7 +451,6 @@ public class CodeUtils {
     }
 
     public static final ByteBuffer TEMP_BUF = ByteBuffer.allocate(1024);
-
 
 
     public static int encodeMessage(ByteBuffer bb, int offset,

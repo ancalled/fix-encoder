@@ -1,7 +1,7 @@
 package com.mcscm.fixtools.generator;
 
-import com.mcscm.fixtools.utils.CodeUtils;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import static java.lang.String.format;
@@ -56,7 +56,7 @@ public class FieldDescriptor {
     public void appendFieldConstant(StringBuilder sb, String indent) {
         sb.append(indent);
 
-        String bytes = Arrays.toString(CodeUtils.intToBytes(tag))
+        String bytes = Arrays.toString(intToBytes(tag))
                 .replace("[", "{")
                 .replace("]", "}");
         sb.append(String.format("public static final byte[] TAG_%S = %s; //%d\n", name, bytes, tag));
@@ -108,7 +108,7 @@ public class FieldDescriptor {
 
         if (type == FieldType.NUMINGROUP) {
             sb.append(format(
-                            indent + "    for (%s it: this.%s) {\n" +
+                    indent + "    for (%s it: this.%s) {\n" +
                             indent + "        sb.append(it.encode());\n" +
                             indent + "    }\n",
                     name, fieldName
@@ -173,7 +173,7 @@ public class FieldDescriptor {
 
         String putMthd = String.format(mthd, arg);
         sb.append(String.format(
-                        indent + "    buf.put(TAG_%S);\n" +
+                indent + "    buf.put(TAG_%S);\n" +
                         indent + "    buf.put(EQ);\n" +
                         indent + "    %s;\n"
                 , name, putMthd));
@@ -232,6 +232,10 @@ public class FieldDescriptor {
                 break;
         }
         return "";
+    }
+
+    public static byte[] intToBytes(int i) {
+        return ByteBuffer.allocate(4).putInt(i).array();
     }
 
 

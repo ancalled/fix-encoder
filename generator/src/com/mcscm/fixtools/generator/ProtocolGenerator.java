@@ -304,7 +304,7 @@ public class ProtocolGenerator {
         sb.append(indent).append("    static {\n");
         forEach(el, 0, (f, i) -> {
             if (f.type == FieldType.NUMINGROUP) {
-                sb.append(String.format(
+                sb.append(format(
                         indent + "        TAGS_TREE.add(TAG_%S, (bb, o, l, mes) -> {\n" +
                                 indent + "            if (mes.parsed.get(%d)) return -1;\n\n" +
 
@@ -324,7 +324,7 @@ public class ProtocolGenerator {
                         f.fieldName, i, f.name, f.name, f.name, i
                 ));
             } else {
-                sb.append(String.format(
+                sb.append(format(
                         indent + "        TAGS_TREE.add(TAG_%S, (bb, o, l, mes) -> {\n" +
                                 indent + "            if (mes.parsed.get(%d)) return -1;\n" +
                                 indent + "            mes.%s = %s;\n" +
@@ -374,7 +374,7 @@ public class ProtocolGenerator {
         sb.append(indent).append("@Override\n");
         sb.append(indent).append("public String toString() {\n");
         sb.append(indent).append("    return \"").append(className).append(" {\" + \n");
-        forEach(el, 0, (f, i) -> sb.append(String.format(
+        forEach(el, 0, (f, i) -> sb.append(format(
                 indent + "    \"%s%s='\" + %s + '\\'' +\n"
                 , (i > 0 ? ", " : ""), f.fieldName, f.fieldName)));
         sb.append(indent).append("    '}';\n");
@@ -385,7 +385,7 @@ public class ProtocolGenerator {
         sb.append(indent).append("public String printParsed(String indent) {\n");
         sb.append(indent).append("    StringBuilder sb = new StringBuilder();\n");
         forEach(el, 0, (f, i) -> sb.append(
-                String.format(
+                format(
                         indent + "    if (parsed.get(%d)) {\n" +
                                 indent + "        sb.append(indent).append(\"%s\").append(\": '\").append(%s).append(\"\\'\\n\");\n" +
                                 indent + "    }\n",

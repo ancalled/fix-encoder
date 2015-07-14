@@ -170,7 +170,8 @@ public class TestClient {
         client.connect();
 
         String username = "148b03";
-        String pass = "123";
+//        String pass = "123";
+        String pass = "baklajan532";
         client.logon(username, pass);
 
         client.addListener((m) ->
