@@ -127,7 +127,11 @@ public class FieldDescriptor {
 
         String mthd = "";
         if (enumField) {
-            mthd = "buf.put(" + fieldName + ".bytes)";
+            if (type == FieldType.NUMINGROUP) {
+                mthd = "CodeUtils.put(buf, %s)";
+            } else {
+                mthd = "buf.put(" + fieldName + ".bytes)";
+            }
         } else {
             switch (type.javaType) {
                 case "String":
@@ -194,11 +198,11 @@ public class FieldDescriptor {
     }
 
 
-    public String decodeMethod(String bufParam, String offsetParam, String lengthParam) {
+    public String decodeMethod(String bufParam, String offsetParam, String lengthParam, String javaPackage) {
         String decode = String.format(decodeSimple(), bufParam, offsetParam, lengthParam);
 
         if (enumField) {
-            return name + ".getByValue(" + decode + ")";
+            return javaPackage + ".enums." + name + ".getByValue(" + decode + ")";      //todo add package name
         } else {
             return decode;
         }

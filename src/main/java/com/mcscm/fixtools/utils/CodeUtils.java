@@ -4,6 +4,7 @@ import com.mcscm.fixtools.FIXMessage;
 import com.mcscm.fixtools.MessageFactory;
 import org.sample.Header;
 import org.sample.Trailer;
+import org.sample.enums.MsgType;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -429,7 +430,7 @@ public class CodeUtils {
         header.printWarnings();
         header.clearWarnings();
 
-        FIXMessage message = factory.create(header.msgType);
+        FIXMessage message = factory.create(header.msgType.value);
         if (message == null) return null;
 
         offset = message.decode(bb, offset, length);
@@ -460,7 +461,7 @@ public class CodeUtils {
 
         bb.position(offset);
 
-        header.msgType = mes.getType();
+        header.msgType = MsgType.valueOf(mes.getType());
 
         //removing first 2 fields to calc body and header length
         String beginString = header.beginString;

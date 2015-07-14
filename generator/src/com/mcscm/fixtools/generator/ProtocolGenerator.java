@@ -27,8 +27,9 @@ public class ProtocolGenerator {
     private final Path outDir;
     private final Path enumsDir;
     private final char fieldSep;
+    private final Map<String, Element> componentsMap = new HashMap<>();
 
-    public ProtocolGenerator(String xmlIn) throws IOException, SAXException, ParserConfigurationException {
+    public ProtocolGenerator(String xmlIn) throws IOException, SAXException, ParserConfigurationException, XPathException {
         parser = new XmlParser(xmlIn);
         javaPackage = System.getProperty("package", "org.sample");
         fieldSep = DEFAULT_FIELD_SEP;
@@ -38,6 +39,8 @@ public class ProtocolGenerator {
         enumsDir = outDir.resolve("enums");
         Files.createDirectories(outDir);
         Files.createDirectories(enumsDir);
+
+        parser.prepareComponentsMap(componentsMap);
     }
 
     public void generate() throws IOException {
@@ -236,8 +239,9 @@ public class ProtocolGenerator {
         sb.append(format(
                 indent + "public static %s getByValue(%s value) {\n" +
                         indent + "    for (%s e: values()) {\n" +
-                        indent + "        if (e.value == value) return e;\n" +
-                        indent + "    };\n" +
+
+                        indent + "        if (java.util.Objects.equals(e.value, value)) return e;\n" +
+                        indent + "    }\n" +
                         indent + "    return null;\n" +
                         indent + "}\n",
                 name, javaType, name
@@ -331,7 +335,7 @@ public class ProtocolGenerator {
                                 indent + "            mes.parsed.set(%d);\n" +
                                 indent + "            return o + l + 1;\n" +
                                 indent + "        });\n",
-                        f.fieldName, i, f.fieldName, f.decodeMethod("bb", "o", "l"), i
+                        f.fieldName, i, f.fieldName, f.decodeMethod("bb", "o", "l", javaPackage), i
                 ));
             }
         });
@@ -578,12 +582,16 @@ public class ProtocolGenerator {
 
             } else if ("component".equals(elName)) {
                 final String compName = el.getAttribute("name");
-                final NodeList childNodes = eval("/fix/components/component[@name='" + compName + "']");
-
-                for (int j = 0; j < childNodes.getLength(); j++) {
-                    final Node childItem = childNodes.item(j);
-                    if (childItem == null || !(childItem instanceof Element)) continue;
-                    generateSubClasses(sb, imports, (Element) childItem, level);
+//                final NodeList childNodes = eval("/fix/components/component[@name='" + compName + "']");
+//
+//                for (int j = 0; j < childNodes.getLength(); j++) {
+//                    final Node childItem = childNodes.item(j);
+//                    if (childItem == null || !(childItem instanceof Element)) continue;
+//                    generateSubClasses(sb, imports, (Element) childItem, level);
+//                }
+                final Element childItem = componentsMap.get(compName);
+                if (childItem != null) {
+                    generateSubClasses(sb, imports, childItem, level);
                 }
             }
         }
@@ -611,13 +619,17 @@ public class ProtocolGenerator {
 
             } else if ("component".equals(elName)) {
                 final String compName = el.getAttribute("name");
-                final NodeList childNodes = eval("/fix/components/component[@name='" + compName + "']");
-
-                for (int j = 0; j < childNodes.getLength(); j++) {
-                    final Node childItem = childNodes.item(j);
-                    if (childItem == null || !(childItem instanceof Element)) continue;
-                    idx = forEach((Element) childItem, idx, func);
+                final Element childItem = componentsMap.get(compName);
+                if (childItem != null) {
+                    idx = forEach(childItem, idx, func);
                 }
+
+//                final NodeList childNodes = eval("/fix/components/component[@name='" + compName + "']");
+//                for (int j = 0; j < childNodes.getLength(); j++) {
+//                    final Node childItem = childNodes.item(j);
+//                    if (childItem == null || !(childItem instanceof Element)) continue;
+//                    idx = forEach((Element) childItem, idx, func);
+//                }
             } else if ("group".equals(elName)) {
                 final String fieldName = el.getAttribute("name");
                 final FieldDescriptor field = fieldTypes.get(fieldName);
@@ -678,8 +690,8 @@ public class ProtocolGenerator {
 
 
     public static void main(String[] args) throws Exception {
-        final String xmlIn = "./data/FIX_test.xml";
-//        final String xmlIn = "./data/FIX50.xml";
+//        final String xmlIn = "./data/FIX_test.xml";
+        final String xmlIn = "./data/FIX50.xml";
         ProtocolGenerator generator = new ProtocolGenerator(xmlIn);
         generator.generate();
     }

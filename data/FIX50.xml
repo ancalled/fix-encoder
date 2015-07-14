@@ -1,8 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <fix minor="0" major="5">
-  <header/>
-  <trailer/>
+  <header>
+    <field name='BeginString' required='Y'/>
+    <field name='BodyLength' required='Y'/>
+    <field name='MsgType' required='Y'/>
+    <field name='SenderCompID' required='Y'/>
+    <field name='TargetCompID' required='Y'/>
+    <field name='OnBehalfOfCompID' required='N'/>
+    <field name='DeliverToCompID' required='N'/>
+    <field name='SecureDataLen' required='N'/>
+    <field name='SecureData' required='N'/>
+    <field name='MsgSeqNum' required='Y'/>
+    <field name='SenderSubID' required='N'/>
+    <field name='SenderLocationID' required='N'/>
+    <field name='TargetSubID' required='N'/>
+    <field name='TargetLocationID' required='N'/>
+    <field name='OnBehalfOfSubID' required='N'/>
+    <field name='OnBehalfOfLocationID' required='N'/>
+    <field name='DeliverToSubID' required='N'/>
+    <field name='DeliverToLocationID' required='N'/>
+    <field name='PossDupFlag' required='N'/>
+    <field name='PossResend' required='N'/>
+    <field name='SendingTime' required='Y'/>
+    <field name='OrigSendingTime' required='N'/>
+    <field name='XmlDataLen' required='N'/>
+    <field name='XmlData' required='N'/>
+    <field name='MessageEncoding' required='N'/>
+    <field name='LastMsgSeqNumProcessed' required='N'/>
+    <component name='HopGrp' required='N'/>
+    <field name='ApplVerID' required='N'/>
+    <field name='CstmApplVerID' required='N'/>
+  </header>
+  <trailer>
+    <field name='SignatureLength' required='N'/>
+    <field name='Signature' required='N'/>
+    <field name='CheckSum' required='Y'/>
+  </trailer>
   <messages>
+    <message msgcat='admin' msgtype='A' name='Logon'>
+      <field name='EncryptMethod' required='Y'/>
+      <field name='HeartBtInt' required='Y'/>
+      <field name='RawDataLength' required='N'/>
+      <field name='RawData' required='N'/>
+      <field name='ResetSeqNumFlag' required='N'/>
+      <field name='NextExpectedMsgSeqNum' required='N'/>
+      <field name='MaxMessageSize' required='N'/>
+      <field name='TestMessageIndicator' required='N'/>
+      <field name='Username' required='N'/>
+      <field name='Password' required='N'/>
+      <field name='MemberName' required='N'/>
+      <field name='DefaultApplVerID' required='Y'/>
+      <field name='NewPassword' required='N'/>
+      <field name='EncryptedPasswordMethod' required='N'/>
+      <field name='EncryptedPasswordLen' required='N'/>
+      <field name='EncryptedPassword' required='N'/>
+      <field name='EncryptedNewPasswordLen' required='N'/>
+      <field name='EncryptedNewPassword' required='N'/>
+      <component name='MsgTypeGrp' required='N'/>
+    </message>
+
     <message name="BusinessMessageReject" msgtype="j" msgcat="app">
       <field name="RefSeqNum" required="N"/>
       <field name="RefMsgType" required="Y"/>
@@ -8209,7 +8265,18 @@
         <field number="1134" name="ReportedPxDiff" type="BOOLEAN"/>
         <field number="1135" name="RptSys" type="STRING"/>
         <field number="1136" name="AllocClearingFeeIndicator" type="STRING"/>
-        <field number="1137" name="DefaultApplVerID" type="STRING"/>
+    <field name='DefaultApplVerID' number='1137' type='STRING'>
+      <value description='FIX27' enum='0'/>
+      <value description='FIX30' enum='1'/>
+      <value description='FIX40' enum='2'/>
+      <value description='FIX41' enum='3'/>
+      <value description='FIX42' enum='4'/>
+      <value description='FIX43' enum='5'/>
+      <value description='FIX44' enum='6'/>
+      <value description='FIX50' enum='7'/>
+      <value description='FIX50SP1' enum='8'/>
+      <value description='FIX50SP2' enum='9'/>
+    </field>
         <field number="1138" name="DisplayQty" type="QTY"/>
         <field number="1139" name="ExchangeSpecialInstructions" type="STRING"/>
         <field number="5450" name="MDElementName" type="INT">
@@ -8233,5 +8300,13 @@
         <field number="9001" name="NestedUserDataName" type="STRING"/>
         <field number="9002" name="NestedUserDataValue" type="STRING"/>
         <field number="9995" name="SpotValueDateForNDF" type="LOCALMKTDATE"/>
+
+    <field number="5183" name="MemberName" type="STRING"/>
+    <field name='NewPassword' number='5195' type='STRING'/>
+    <field name='EncryptedPasswordMethod' number='5196' type='INT'/>
+    <field name='EncryptedPasswordLen' number='5197' type='INT'/>
+    <field name='EncryptedPassword' number='5198' type='STRING'/>
+    <field name='EncryptedNewPasswordLen' number='5199' type='INT'/>
+    <field name='EncryptedNewPassword' number='5200' type='STRING'/>
     </fields>
 </fix>

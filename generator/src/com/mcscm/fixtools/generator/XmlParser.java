@@ -197,4 +197,15 @@ public class XmlParser {
             return false;
         }
     }
+
+    public void prepareComponentsMap(Map<String, Element> map) throws XPathException {
+        final NodeList childNodes = (NodeList) eval("/fix/components/component");
+        for (int j = 0; j < childNodes.getLength(); j++) {
+            final Node childItem = childNodes.item(j);
+            if (childItem == null || !(childItem instanceof Element)) continue;
+            final Element el = (Element) childItem;
+            String name = el.getAttribute("name");
+            map.put(name, el);
+        }
+    }
 }
